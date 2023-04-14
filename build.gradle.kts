@@ -6,14 +6,16 @@ plugins {
 group = "org.chronusartcenter"
 version = "1.0-SNAPSHOT"
 
-//repositories {
-//    google()
-//    mavenCentral()
-//    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-//}
-
 dependencies {
     implementation(compose.desktop.currentOs)
+
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation("com.alibaba.fastjson2:fastjson2:2.0.26")
+    implementation("log4j:log4j:1.2.17")
+    implementation("stax:stax:1.2.0")
+    implementation("commons-codec:commons-codec:1.15")
+    implementation("com.illposed.osc:javaosc-core:0.7")
+    implementation("org.apache.commons:commons-lang3:3.12.0")
 }
 
 compose.desktop {
