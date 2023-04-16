@@ -10,15 +10,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ConnectIndicator(name: String, isConnected: Boolean) {
+fun ConnectIndicator(modifier: Modifier = Modifier, name: String, isConnected: Boolean) {
     Row(
-        modifier = Modifier.padding(5.dp)
+        modifier = modifier.padding(5.dp)
             .wrapContentSize(Alignment.Center),
         Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Canvas(
-            modifier = Modifier
+            modifier = modifier
                 .size(size = 5.dp)
                 .padding(2.dp),
         ) {

@@ -11,7 +11,7 @@ class ConsoleBuffer(initial: MutableList<String>) {
     }
 
     fun append(content: String) {
-        this.content.value.add(content)
+        this.content.value.add(content + "\n")
     }
 
     fun getContent(): List<String> {

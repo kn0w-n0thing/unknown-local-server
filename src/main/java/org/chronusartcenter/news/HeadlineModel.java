@@ -86,4 +86,5 @@ public class HeadlineModel {
         this.author = headlineModel.author;
         this.publishDate = headlineModel.publishDate;
     }
+
 }

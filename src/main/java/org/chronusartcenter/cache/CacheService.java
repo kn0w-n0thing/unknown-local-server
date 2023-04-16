@@ -14,6 +14,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.alibaba.fastjson2.JSONWriter.Feature.PrettyFormat;
@@ -33,10 +34,17 @@ public class CacheService {
         }
 
         var headlineList = loadHeadlines();
-        for (var headline : headlineList) {
-            if (headline.getIndex() == insertHeadline.getIndex()) {
-                headline.set(insertHeadline);
-                break;
+        if (headlineList == null) {
+            var newHeadlineList = new ArrayList<>(List.of(insertHeadline));
+            saveHeadlines(newHeadlineList);
+            return JSON.toJSONString(newHeadlineList, PrettyFormat);
+        } else {
+            var duplicatedIndex = headlineList.stream()
+                    .filter(headlineModel -> headlineModel.getIndex() == insertHeadline.getIndex()).findAny();
+            if (duplicatedIndex.isEmpty()) {
+                headlineList.add(insertHeadline);
+            } else {
+                duplicatedIndex.get().set(insertHeadline);
             }
         }
         return saveHeadlines(headlineList);
@@ -78,14 +86,13 @@ public class CacheService {
             }
             return list;
         } catch (IOException exception) {
-            logger.error(exception.toString());
+            logger.info(exception.toString());
             return null;
         }
     }
 
     public void saveImage(String fileName, String base64Image) {
-        // Bad design due to adaption to the osc client!!!
-        String directory = "../unknown-gui/public/image";
+        String directory = "src/main/resources/cache/image";
         if (!createDirectoryIfNecessary(directory)) {
             return;
         }

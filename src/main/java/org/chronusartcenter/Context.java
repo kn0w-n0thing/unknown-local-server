@@ -3,15 +3,22 @@ package org.chronusartcenter;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.JSONWriter;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Context {
     public static final String CONFIG_FILE_PATH = "src/main/resources/config.json";
 
+    private CopyOnWriteArrayList<GuiConsoleListener> guiConsoleListeners;
     private Logger logger = Logger.getLogger(Context.class);
+
+    public Context() {
+        this.guiConsoleListeners = new CopyOnWriteArrayList<>();
+    }
 
     public JSONObject loadConfig() {
         try {
@@ -33,6 +40,30 @@ public class Context {
         } catch (IOException exception) {
             logger.error(exception.toString());
         }
+    }
 
+    public interface GuiConsoleListener {
+        void onMessage(@NotNull String message);
+    }
+
+    public void addGuiConsoleListener(GuiConsoleListener listener) {
+        if (listener == null || guiConsoleListeners.contains(listener)) {
+            return;
+        }
+
+        guiConsoleListeners.add(listener);
+    }
+
+    public void removeGuiConsoleListener(GuiConsoleListener listener) {
+        if (listener == null || !guiConsoleListeners.contains(listener)) {
+            return;
+        }
+
+        guiConsoleListeners.remove(listener);
+    }
+    public void guiConsolePrint(String message) {
+        for (var listener : guiConsoleListeners) {
+            listener.onMessage(message);
+        }
     }
 }

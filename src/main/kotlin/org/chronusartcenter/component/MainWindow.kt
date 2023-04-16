@@ -1,15 +1,13 @@
 package org.chronusartcenter.model
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.neverEqualPolicy
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -17,9 +15,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
+import com.alibaba.fastjson2.JSON
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.apache.logging.log4j.kotlin.logger
+import org.chronusartcenter.Context
+import org.chronusartcenter.ServiceManager
+import org.chronusartcenter.cache.CacheService
 import org.chronusartcenter.component.ConnectIndicator
 import org.chronusartcenter.component.Console
 import org.chronusartcenter.component.OscClient
+import org.chronusartcenter.dalle.DalleService
+import org.chronusartcenter.news.NewsService
+import org.chronusartcenter.osc.OscService
 
 val INITIAL_CONTENT = mutableListOf(
     ".##..##..##..##..##..##..##..##...####...##...##..##..##.\n",
@@ -34,18 +42,37 @@ val INITIAL_CONTENT = mutableListOf(
 fun MainWindow(
     onCloseRequest: () -> Unit,
     state: WindowState = rememberWindowState(),
-    title: String = "Untitled"
+    title: String = "Untitled",
+    context: Context
 ) {
     Window(
         onCloseRequest = onCloseRequest,
         title = title,
         state = state
     ) {
-        val (dalleStatus, setDalleStatus) = remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
+
+        val dalleService = DalleService(context)
+        val (dalleStatus, setDalleStatus) = remember { mutableStateOf(dalleService.check()) }
+        val (isProcessing, setProcessing) = remember { mutableStateOf(false) }
+
         val (requestInterval, setRequestInterval) = remember { mutableStateOf(3) }
 
         val consoleBuffer = ConsoleBuffer(INITIAL_CONTENT)
         val (console, setConsole) = remember { mutableStateOf(consoleBuffer.getContent(), neverEqualPolicy()) }
+
+        val oscService = remember {ServiceManager.getInstance().getService(ServiceManager.SERVICE_TYPE.OSC_SERVICE) as OscService}
+        val oscClientConfigs = remember { oscService.readClientConfig(context) }
+
+        val newService = remember { NewsService(context) }
+        var cacheService = remember { CacheService(context) }
+
+        val logger = remember { logger() }
+
+        context.addGuiConsoleListener { message ->
+            consoleBuffer.append(message)
+            setConsole(consoleBuffer.getContent())
+        }
 
         MaterialTheme {
             Column(Modifier.fillMaxSize(), Arrangement.spacedBy(10.dp)) {
@@ -55,6 +82,9 @@ fun MainWindow(
                         isConnected = true
                     )
                     ConnectIndicator(
+                        modifier = Modifier.clickable (
+                            onClick = { setDalleStatus(dalleService.check()) }
+                        ),
                         name = "dalle-mini-server",
                         isConnected = dalleStatus
                     )
@@ -87,22 +117,51 @@ fun MainWindow(
                     )
                     Text("hour(s).")
                     Button(
-                        onClick = {},
-                        enabled = dalleStatus,
+                        onClick = {
+                            coroutineScope.launch(Dispatchers.IO) {
+                                setProcessing(true)
+                                val headlines = newService.translateHeadlines(newService.fetchHeadlines())
+
+                                if (headlines == null || headlines.size == 0) {
+                                    val message = "Failed to get headlines!"
+                                    consoleBuffer.append(message)
+                                    setConsole(consoleBuffer.getContent())
+                                    logger.info(message)
+                                    setProcessing(false)
+                                    return@launch
+                                }
+
+                                headlines.forEachIndexed{ index, headlineModel ->
+                                    val image = dalleService.generateImage(headlineModel.translation, 1)
+                                    headlineModel.index = index
+                                    cacheService.saveImage(index.toString() + "." + image.right, image.left.get(0))
+                                    cacheService.saveHeadline(headlineModel)
+                                }
+
+                                val message = "Processing completed."
+                                consoleBuffer.append(message)
+                                setConsole(consoleBuffer.getContent())
+                                logger.info(message)
+                                setProcessing(false)
+                            }
+                        },
+                        enabled = !isProcessing && dalleStatus,
                     ) {
                         Text("Start")
                     }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    for (i in 1..6) {
-                        OscClient(i, "127.0.0.1", 5001)
-                    }
+                    oscClientConfigs?.forEach{ oscClientConfig -> OscClient(oscClientConfig) }
                 }
 
 
                 Button(onClick = {
-                    consoleBuffer.append("Hello world\n\n")
+                    logger.info(oscClientConfigs.fold(StringBuilder()) {
+                        str: StringBuilder,
+                        oscClientConfig: OscClientConfig -> str.append(JSON.toJSONString(oscClientConfig))
+                    })
+                    consoleBuffer.append("Save osc clients' config.\n\n")
                     setConsole(consoleBuffer.getContent())
                 }) {
                     Text("Save")

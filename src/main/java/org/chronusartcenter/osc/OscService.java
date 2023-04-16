@@ -7,10 +7,10 @@ import com.illposed.osc.OSCMessageEvent;
 import com.illposed.osc.OSCSerializeException;
 import com.illposed.osc.transport.udp.OSCPortIn;
 import com.illposed.osc.transport.udp.OSCPortOut;
-import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.log4j.Logger;
 import org.chronusartcenter.Context;
 import org.chronusartcenter.cache.CacheService;
+import org.chronusartcenter.model.OscClientConfig;
 import org.chronusartcenter.news.HeadlineModel;
 
 import java.io.IOException;
@@ -22,14 +22,13 @@ import java.util.Random;
 
 public class OscService {
     private final Context context;
-    // Triple(id, ip, port)
-    private final ArrayList<ImmutableTriple<Integer, String, Integer>> oscClients = new ArrayList<>();
+    private ArrayList<OscClientConfig> oscClients;
 
     private final Logger logger = Logger.getLogger(Context.class);
 
     public OscService(Context context) {
         this.context = context;
-        readClientConfig(context, oscClients);
+        oscClients = readClientConfig(context);
     }
 
     public void start() {
@@ -92,14 +91,14 @@ public class OscService {
     }
 
     public void updateOscClient() {
-        readClientConfig(context, oscClients);
+        oscClients = readClientConfig(context);
     }
 
     public void shutDownOscClients() {
         for (var client : oscClients) {
             try {
-                OSCPortOut oscPortOut = new OSCPortOut(InetAddress.getByName(client.middle), client.right);
-                final OSCMessage msg = new OSCMessage("/shutdown" + client.left);
+                OSCPortOut oscPortOut = new OSCPortOut(InetAddress.getByName(client.getIp()), client.getPort());
+                final OSCMessage msg = new OSCMessage("/shutdown" + client.getId());
                 oscPortOut.send(msg);
             } catch (IOException | OSCSerializeException e) {
                 logger.error(e.toString());
@@ -112,7 +111,7 @@ public class OscService {
     }
 
     private void onReady(int id) {
-        var oscClient = oscClients.stream().filter(value -> value.left == id).toList();
+        var oscClient = oscClients.stream().filter(value -> value.getId() == id).toList();
         if (oscClient.size() == 0) {
             logger.error("id " + id + " doesn't exists!");
             return;
@@ -121,8 +120,8 @@ public class OscService {
             return;
         }
 
-        String ip = oscClient.get(0).middle;
-        int port = oscClient.get(0).right;
+        String ip = oscClient.get(0).getIp();
+        int port = oscClient.get(0).getPort();
         try {
             OSCPortOut client = new OSCPortOut(InetAddress.getByName(ip), port);
             final List<Object> arg = new LinkedList<>();
@@ -135,7 +134,7 @@ public class OscService {
             final OSCMessage msg = new OSCMessage("/headline-" + id, arg);
             client.send(msg);
             logger.info("Title: " + headline.getTitle()
-                    + ", image link: " + ":3000/image/" + headline.getIndex() + ".jpeg");
+                    + ", image link: " + "/image/" + headline.getIndex() + ".jpeg");
         } catch (IOException | OSCSerializeException exception) {
             logger.error(exception.toString());
         }
@@ -149,11 +148,12 @@ public class OscService {
         return headlines.get(rand.nextInt(headlines.size()));
     }
 
-    private void readClientConfig(Context context, ArrayList<ImmutableTriple<Integer, String, Integer>> oscClients) {
+    public ArrayList<OscClientConfig> readClientConfig(Context context) {
+        ArrayList<OscClientConfig> result = new ArrayList<>();
         var clientsJson = context.loadConfig().getJSONArray("oscClient");
         if (clientsJson == null) {
             logger.error("No config of osc clients.");
-            return;
+            return result;
         }
 
         for (Object clientConfig : clientsJson) {
@@ -161,10 +161,19 @@ public class OscService {
                 logger.warn("Invalid osc clients config: " + clientConfig.toString());
                 break;
             }
+
             int id = ((JSONObject) clientConfig).getIntValue("id");
             String ip = ((JSONObject) clientConfig).getString("ip");
             int port = ((JSONObject) clientConfig).getIntValue("port");
-            oscClients.add(new ImmutableTriple<>(id, ip, port));
+            try {
+                var oscClientConfig = new OscClientConfig(id, ip, port);
+                result.add(oscClientConfig);
+            } catch (IllegalArgumentException exception) {
+                logger.error(exception);
+                break;
+            }
         }
+
+        return result;
     }
 }

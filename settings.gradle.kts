@@ -18,6 +18,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven ("https://repository.apache.org/snapshots")
     }
 }
 
