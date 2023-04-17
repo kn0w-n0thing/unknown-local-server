@@ -21,7 +21,7 @@ public class DalleService {
 
     public DalleService(Context context) {
         if (context == null
-            || context.loadConfig() == null
+                || context.loadConfig() == null
                 || context.loadConfig().getString("dalleServerUrl") == null) {
             url = "http://127.0.0.1:8080";
         } else {

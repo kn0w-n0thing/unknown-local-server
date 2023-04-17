@@ -1,9 +1,11 @@
 package org.chronusartcenter.model
 
-fun isIpAddressValid(address: String) : Boolean {
-    val regex = "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|localhost\$".toRegex()
+fun isIpAddressValid(address: String): Boolean {
+    val regex =
+        "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|localhost\$".toRegex()
     return regex.matches(input = address)
 }
+
 data class OscClientConfig @Throws(IllegalArgumentException::class)
 constructor(val id: Int, var ip: String, var port: Int) {
 

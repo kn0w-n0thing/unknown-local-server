@@ -14,7 +14,6 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.alibaba.fastjson2.JSONWriter.Feature.PrettyFormat;
@@ -82,7 +81,7 @@ public class CacheService {
             JSONArray jsonArray = JSON.parseArray(jsonString);
             ArrayList<HeadlineModel> list = new ArrayList<>();
             for (var headlineJson : jsonArray) {
-                list.add(((JSONObject)headlineJson).toJavaObject(HeadlineModel.class));
+                list.add(((JSONObject) headlineJson).toJavaObject(HeadlineModel.class));
             }
             return list;
         } catch (IOException exception) {
@@ -97,7 +96,7 @@ public class CacheService {
             return;
         }
 
-        try ( OutputStream stream = new FileOutputStream(directory + File.separator + fileName) ){
+        try (OutputStream stream = new FileOutputStream(directory + File.separator + fileName)) {
             byte[] decodedBytes = Base64.decodeBase64(base64Image.getBytes(StandardCharsets.UTF_8));
             stream.write(decodedBytes);
         } catch (IOException exception) {
@@ -121,6 +120,7 @@ public class CacheService {
         String headlinePath = context.loadConfig().getString("headlinePath");
         return Paths.get(headlinePath);
     }
+
     private String getHeadlineDirectory() {
         try {
             return getHeadlinePath().getParent().toString();

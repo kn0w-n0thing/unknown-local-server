@@ -7,6 +7,7 @@ public class ServiceManager {
     public enum SERVICE_TYPE {
         OSC_SERVICE,
     }
+
     private static ServiceManager INSTANCE;
     private Context context;
 

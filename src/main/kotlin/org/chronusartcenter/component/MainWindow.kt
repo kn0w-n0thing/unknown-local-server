@@ -62,8 +62,9 @@ fun MainWindow(
         val consoleBuffer = ConsoleBuffer(INITIAL_CONTENT)
         val (console, setConsole) = remember { mutableStateOf(consoleBuffer.getContent(), neverEqualPolicy()) }
 
-        val oscService = remember {ServiceManager.getInstance().getService(ServiceManager.SERVICE_TYPE.OSC_SERVICE) as OscService}
-        val oscClientConfigs = remember { oscService.readClientConfig(context) }
+        val oscService =
+            remember { ServiceManager.getInstance().getService(ServiceManager.SERVICE_TYPE.OSC_SERVICE) as OscService }
+        val oscClientConfigs by remember { mutableStateOf(oscService.readClientConfig(context)) }
 
         val newService = remember { NewsService(context) }
         val cacheService = remember { CacheService(context) }
@@ -123,7 +124,7 @@ fun MainWindow(
                         isConnected = true
                     )
                     ConnectIndicator(
-                        modifier = Modifier.clickable (
+                        modifier = Modifier.clickable(
                             onClick = { setDalleStatus(dalleService.check()) }
                         ),
                         name = "dalle-mini-server",
@@ -183,20 +184,30 @@ fun MainWindow(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    oscClientConfigs?.forEach{ oscClientConfig -> OscClient(oscClientConfig) }
+                    oscClientConfigs?.forEach { oscClientConfig ->
+                        OscClient(
+                            oscClientConfig = oscClientConfig,
+                            onIpChanged = { ip ->
+                                oscClientConfig.ip = ip
+                            },
+                            onPortChanged = { port ->
+                                oscClientConfig.port = port
+                            }
+                        )
+                    }
                 }
 
-
-//                Button(onClick = {
+                Button(onClick = {
 //                    logger.info(oscClientConfigs.fold(StringBuilder()) {
 //                        str: StringBuilder,
 //                        oscClientConfig: OscClientConfig -> str.append(JSON.toJSONString(oscClientConfig))
 //                    })
-//                    consoleBuffer.append("Save osc clients' config.\n\n")
-//                    setConsole(consoleBuffer.getContent())
-//                }) {
-//                    Text("Save")
-//                }
+                    oscService.saveClientConfig(context, oscClientConfigs)
+                    consoleBuffer.append("Save osc client config and restart the all the clients.\n")
+                    setConsole(consoleBuffer.getContent())
+                }) {
+                    Text("Save")
+                }
             }
 
         }

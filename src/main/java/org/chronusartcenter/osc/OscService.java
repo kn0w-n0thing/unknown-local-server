@@ -43,7 +43,7 @@ public class OscService {
                 port = config.getJSONObject("oscServer").getInteger("port");
             }
             OSCPortIn server = new OSCPortIn(port);
-            logger.info("Start osc server at localhost: " + port );
+            logger.info("Start osc server at localhost: " + port);
             server.getDispatcher().addListener(new MessageSelector() {
                 @Override
                 public boolean isInfoRequired() {
@@ -175,5 +175,29 @@ public class OscService {
         }
 
         return result;
+    }
+
+    public void saveClientConfig(Context context, ArrayList<OscClientConfig> oscClientConfigs) {
+        if (oscClientConfigs == null || oscClientConfigs.isEmpty()) {
+            logger.error("oscClientConfigs is null or empty");
+            return;
+        }
+
+        var configJson = context.loadConfig();
+
+        if (configJson == null) {
+            logger.error("Fail to load configs");
+            return;
+        }
+
+        configJson.put("oscClient", oscClientConfigs);
+        try {
+            context.saveConfig(configJson);
+        } catch (IOException e) {
+            logger.error(e.toString());
+        }
+
+        updateOscClient();
+        shutDownOscClients();
     }
 }

@@ -61,6 +61,7 @@ public class Context {
 
         guiConsoleListeners.remove(listener);
     }
+
     public void guiConsolePrint(String message) {
         for (var listener : guiConsoleListeners) {
             listener.onMessage(message);
