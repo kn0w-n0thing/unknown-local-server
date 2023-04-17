@@ -19,10 +19,13 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class OscService {
     private final Context context;
     private ArrayList<OscClientConfig> oscClients;
+
+    private ReentrantLock lock = new ReentrantLock();
 
     private final Logger logger = Logger.getLogger(Context.class);
 
@@ -91,19 +94,31 @@ public class OscService {
     }
 
     public void updateOscClient() {
-        oscClients = readClientConfig(context);
+        lock.lock();
+        try {
+            oscClients = readClientConfig(context);
+        } finally {
+            lock.unlock();
+        }
+
     }
 
     public void shutDownOscClients() {
-        for (var client : oscClients) {
-            try {
-                OSCPortOut oscPortOut = new OSCPortOut(InetAddress.getByName(client.getIp()), client.getPort());
-                final OSCMessage msg = new OSCMessage("/shutdown" + client.getId());
-                oscPortOut.send(msg);
-            } catch (IOException | OSCSerializeException e) {
-                logger.error(e.toString());
+        lock.lock();
+        try {
+            for (var client : oscClients) {
+                try {
+                    OSCPortOut oscPortOut = new OSCPortOut(InetAddress.getByName(client.getIp()), client.getPort());
+                    final OSCMessage msg = new OSCMessage("/shutdown" + client.getId());
+                    oscPortOut.send(msg);
+                } catch (IOException | OSCSerializeException e) {
+                    logger.error(e.toString());
+                }
             }
+        } finally {
+            lock.unlock();
         }
+
     }
 
     private void onPing() {
@@ -111,32 +126,37 @@ public class OscService {
     }
 
     private void onReady(int id) {
-        var oscClient = oscClients.stream().filter(value -> value.getId() == id).toList();
-        if (oscClient.size() == 0) {
-            logger.error("id " + id + " doesn't exists!");
-            return;
-        } else if (oscClient.size() > 1) {
-            logger.error("id " + id + " is duplicated!");
-            return;
-        }
-
-        String ip = oscClient.get(0).getIp();
-        int port = oscClient.get(0).getPort();
+        lock.lock();
         try {
-            OSCPortOut client = new OSCPortOut(InetAddress.getByName(ip), port);
-            final List<Object> arg = new LinkedList<>();
-            var headline = getRandomHeadline();
-            logger.info("Send to Screen " + id
-                    + "of socket: " + client.getRemoteAddress()
-                    + " of  headline: " + JSONObject.toJSONString(headline));
-            arg.add(headline.getTitle());
-            arg.add("/image/" + headline.getIndex() + ".jpeg");
-            final OSCMessage msg = new OSCMessage("/headline-" + id, arg);
-            client.send(msg);
-            logger.info("Title: " + headline.getTitle()
-                    + ", image link: " + "/image/" + headline.getIndex() + ".jpeg");
-        } catch (IOException | OSCSerializeException exception) {
-            logger.error(exception.toString());
+            var oscClient = oscClients.stream().filter(value -> value.getId() == id).toList();
+            if (oscClient.size() == 0) {
+                logger.error("id " + id + " doesn't exists!");
+                return;
+            } else if (oscClient.size() > 1) {
+                logger.error("id " + id + " is duplicated!");
+                return;
+            }
+
+            String ip = oscClient.get(0).getIp();
+            int port = oscClient.get(0).getPort();
+            try {
+                OSCPortOut client = new OSCPortOut(InetAddress.getByName(ip), port);
+                final List<Object> arg = new LinkedList<>();
+                var headline = getRandomHeadline();
+                logger.info("Send to Screen " + id
+                        + "of socket: " + client.getRemoteAddress()
+                        + " of  headline: " + JSONObject.toJSONString(headline));
+                arg.add(headline.getTitle());
+                arg.add("/image/" + headline.getIndex() + ".jpeg");
+                final OSCMessage msg = new OSCMessage("/headline-" + id, arg);
+                client.send(msg);
+                logger.info("Title: " + headline.getTitle()
+                        + ", image link: " + "/image/" + headline.getIndex() + ".jpeg");
+            } catch (IOException | OSCSerializeException exception) {
+                logger.error(exception.toString());
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
