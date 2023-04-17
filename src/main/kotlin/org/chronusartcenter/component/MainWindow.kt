@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
-import com.alibaba.fastjson2.JSON
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.kotlin.logger
@@ -28,6 +27,8 @@ import org.chronusartcenter.component.OscClient
 import org.chronusartcenter.dalle.DalleService
 import org.chronusartcenter.news.NewsService
 import org.chronusartcenter.osc.OscService
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 val INITIAL_CONTENT = mutableListOf(
     ".##..##..##..##..##..##..##..##...####...##...##..##..##.\n",
@@ -56,7 +57,7 @@ fun MainWindow(
         val (dalleStatus, setDalleStatus) = remember { mutableStateOf(dalleService.check()) }
         val (isProcessing, setProcessing) = remember { mutableStateOf(false) }
 
-        val (requestInterval, setRequestInterval) = remember { mutableStateOf(3) }
+        val (requestIntervalMinute, setRequestIntervalMinute) = remember { mutableStateOf(180) }
 
         val consoleBuffer = ConsoleBuffer(INITIAL_CONTENT)
         val (console, setConsole) = remember { mutableStateOf(consoleBuffer.getContent(), neverEqualPolicy()) }
@@ -65,7 +66,7 @@ fun MainWindow(
         val oscClientConfigs = remember { oscService.readClientConfig(context) }
 
         val newService = remember { NewsService(context) }
-        var cacheService = remember { CacheService(context) }
+        val cacheService = remember { CacheService(context) }
 
         val logger = remember { logger() }
 
@@ -73,6 +74,46 @@ fun MainWindow(
             consoleBuffer.append(message)
             setConsole(consoleBuffer.getContent())
         }
+
+        fun requestForNews() {
+            if (isProcessing) run {
+                val message = "It's in the process of requesting, please try it later."
+                logger.info(message)
+                consoleBuffer.append(message)
+                setConsole(consoleBuffer.getContent())
+                return
+            }
+
+            coroutineScope.launch(Dispatchers.IO) {
+                setProcessing(true)
+                val headlines = newService.translateHeadlines(newService.fetchHeadlines())
+
+                if (headlines == null || headlines.size == 0) {
+                    val message = "Failed to get headlines!"
+                    consoleBuffer.append(message)
+                    setConsole(consoleBuffer.getContent())
+                    logger.info(message)
+                    setProcessing(false)
+                    return@launch
+                }
+
+                headlines.forEachIndexed generateImages@{ index, headlineModel ->
+                    val image = dalleService.generateImage(headlineModel.translation, 1) ?: return@generateImages
+                    headlineModel.index = index
+                    cacheService.saveImage(index.toString() + "." + image.right, image.left.get(0))
+                    cacheService.saveHeadline(headlineModel)
+                }
+
+                val message = "Processing completed."
+                consoleBuffer.append(message)
+                setConsole(consoleBuffer.getContent())
+                logger.info(message)
+                setProcessing(false)
+            }
+        }
+
+        var requestTimerOn = remember { false }
+        var requestTimer = remember { Timer() }
 
         MaterialTheme {
             Column(Modifier.fillMaxSize(), Arrangement.spacedBy(10.dp)) {
@@ -99,51 +140,41 @@ fun MainWindow(
                 ) {
                     Text("Request interval: ")
                     OutlinedTextField(
-                        value = requestInterval.toString(),
+                        value = requestIntervalMinute.toString(),
                         onValueChange = {
                             // TODO: to be modified
                             if (it.isNotBlank()) {
                                 try {
-                                    setRequestInterval(it.toInt())
+                                    setRequestIntervalMinute(it.toInt())
                                 } catch (e: NumberFormatException) {
                                     // Do nothing
                                 }
                             } else {
-                                setRequestInterval(0)
+                                setRequestIntervalMinute(0)
                             }
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.width(100.dp)
                     )
-                    Text("hour(s).")
+                    Text("minute(s).")
                     Button(
                         onClick = {
-                            coroutineScope.launch(Dispatchers.IO) {
-                                setProcessing(true)
-                                val headlines = newService.translateHeadlines(newService.fetchHeadlines())
-
-                                if (headlines == null || headlines.size == 0) {
-                                    val message = "Failed to get headlines!"
-                                    consoleBuffer.append(message)
-                                    setConsole(consoleBuffer.getContent())
-                                    logger.info(message)
-                                    setProcessing(false)
-                                    return@launch
-                                }
-
-                                headlines.forEachIndexed{ index, headlineModel ->
-                                    val image = dalleService.generateImage(headlineModel.translation, 1)
-                                    headlineModel.index = index
-                                    cacheService.saveImage(index.toString() + "." + image.right, image.left.get(0))
-                                    cacheService.saveHeadline(headlineModel)
-                                }
-
-                                val message = "Processing completed."
-                                consoleBuffer.append(message)
-                                setConsole(consoleBuffer.getContent())
-                                logger.info(message)
-                                setProcessing(false)
+                            if (requestTimerOn) {
+                                requestTimer.cancel()
+                                requestTimer.purge()
+                                requestTimer = Timer()
                             }
+
+                            requestTimer.schedule(
+                                object : TimerTask() {
+                                    override fun run() {
+                                        requestForNews()
+                                    }
+                                },
+                                0,
+                                TimeUnit.MINUTES.toMillis(requestIntervalMinute.toLong())
+                            )
+                            requestTimerOn = true
                         },
                         enabled = !isProcessing && dalleStatus,
                     ) {
@@ -156,16 +187,16 @@ fun MainWindow(
                 }
 
 
-                Button(onClick = {
-                    logger.info(oscClientConfigs.fold(StringBuilder()) {
-                        str: StringBuilder,
-                        oscClientConfig: OscClientConfig -> str.append(JSON.toJSONString(oscClientConfig))
-                    })
-                    consoleBuffer.append("Save osc clients' config.\n\n")
-                    setConsole(consoleBuffer.getContent())
-                }) {
-                    Text("Save")
-                }
+//                Button(onClick = {
+//                    logger.info(oscClientConfigs.fold(StringBuilder()) {
+//                        str: StringBuilder,
+//                        oscClientConfig: OscClientConfig -> str.append(JSON.toJSONString(oscClientConfig))
+//                    })
+//                    consoleBuffer.append("Save osc clients' config.\n\n")
+//                    setConsole(consoleBuffer.getContent())
+//                }) {
+//                    Text("Save")
+//                }
             }
 
         }

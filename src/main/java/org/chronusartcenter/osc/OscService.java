@@ -130,7 +130,7 @@ public class OscService {
                     + "of socket: " + client.getRemoteAddress()
                     + " of  headline: " + JSONObject.toJSONString(headline));
             arg.add(headline.getTitle());
-            arg.add(":3000/image/" + headline.getIndex() + ".jpeg");
+            arg.add("/image/" + headline.getIndex() + ".jpeg");
             final OSCMessage msg = new OSCMessage("/headline-" + id, arg);
             client.send(msg);
             logger.info("Title: " + headline.getTitle()

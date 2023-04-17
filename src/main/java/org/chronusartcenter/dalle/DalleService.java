@@ -64,7 +64,12 @@ public class DalleService {
                 .build();
 
         try (Response response = okHttpClient.newCall(request).execute()) {
-            JSONObject jsonObject = (JSONObject) JSON.parse(response.body().string());
+            if (!response.isSuccessful()) {
+                logger.error(response.toString());
+                return null;
+            }
+
+            JSONObject jsonObject = (JSONObject) JSON.parse(response.body() != null ? response.body().string() : null);
             if (jsonObject != null) {
                 var imageBase64List = jsonObject.getJSONArray("generatedImgs").stream().map(JSONObject::toJSONString).toList();
                 return new ImmutablePair<>(imageBase64List, jsonObject.getString("generatedImgsFormat"));
