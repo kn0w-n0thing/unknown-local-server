@@ -152,6 +152,9 @@ public class OscService {
                 client.send(msg);
                 logger.info("Title: " + headline.getTitle()
                         + ", image link: " + "/image/" + headline.getIndex() + ".jpeg");
+
+                // notify GUI
+                context.guiOscImageShow(id, "cache/image/" + headline.getIndex() + ".jpeg");
             } catch (IOException | OSCSerializeException exception) {
                 logger.error(exception.toString());
             }

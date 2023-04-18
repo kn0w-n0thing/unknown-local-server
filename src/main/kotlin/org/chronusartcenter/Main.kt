@@ -10,7 +10,7 @@ import org.chronusartcenter.model.MainWindow
 import org.chronusartcenter.osc.OscService
 
 fun main() = application {
-    val context = Context()
+    val context = ServiceManager.getInstance().context
 
     val coroutineScope = rememberCoroutineScope()
     coroutineScope.launch {

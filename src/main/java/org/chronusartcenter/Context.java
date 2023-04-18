@@ -13,11 +13,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Context {
     public static final String CONFIG_FILE_PATH = "src/main/resources/config.json";
 
-    private CopyOnWriteArrayList<GuiConsoleListener> guiConsoleListeners;
+    private CopyOnWriteArrayList<GuiListener> guiListeners;
     private Logger logger = Logger.getLogger(Context.class);
 
     public Context() {
-        this.guiConsoleListeners = new CopyOnWriteArrayList<>();
+        this.guiListeners = new CopyOnWriteArrayList<>();
     }
 
     public JSONObject loadConfig() {
@@ -42,29 +42,37 @@ public class Context {
         }
     }
 
-    public interface GuiConsoleListener {
+    public interface GuiListener {
         void onMessage(@NotNull String message);
+
+        void onOscImage(int oscId, @NotNull String imagePath);
     }
 
-    public void addGuiConsoleListener(GuiConsoleListener listener) {
-        if (listener == null || guiConsoleListeners.contains(listener)) {
+    public void addGuiListener(GuiListener listener) {
+        if (listener == null || guiListeners.contains(listener)) {
             return;
         }
 
-        guiConsoleListeners.add(listener);
+        guiListeners.add(listener);
     }
 
-    public void removeGuiConsoleListener(GuiConsoleListener listener) {
-        if (listener == null || !guiConsoleListeners.contains(listener)) {
+    public void removeGuiListener(GuiListener listener) {
+        if (listener == null || !guiListeners.contains(listener)) {
             return;
         }
 
-        guiConsoleListeners.remove(listener);
+        guiListeners.remove(listener);
     }
 
     public void guiConsolePrint(String message) {
-        for (var listener : guiConsoleListeners) {
+        for (var listener : guiListeners) {
             listener.onMessage(message);
+        }
+    }
+
+    public void guiOscImageShow(int id, String imagePath) {
+        for (var listener : guiListeners) {
+            listener.onOscImage(id, imagePath);
         }
     }
 }

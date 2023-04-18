@@ -1,7 +1,9 @@
 package org.chronusartcenter.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.OutlinedTextField
@@ -11,13 +13,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.chronusartcenter.model.OscClientConfig
 import org.chronusartcenter.model.isIpAddressValid
 
 @Composable
-fun OscClient(oscClientConfig: OscClientConfig, onIpChanged: (String) -> Unit, onPortChanged: (Int) -> Unit) {
+fun OscClient(oscClientConfig: OscClientConfig,
+              onIpChanged: (String) -> Unit,
+              onPortChanged: (Int) -> Unit,
+              imagePath: String?) {
     Column(
         modifier = Modifier,
         verticalArrangement = Arrangement.spacedBy(5.dp),
@@ -27,9 +33,14 @@ fun OscClient(oscClientConfig: OscClientConfig, onIpChanged: (String) -> Unit, o
         var isIpValid by remember { mutableStateOf(true) }
         val (port, setPort) = remember { mutableStateOf(oscClientConfig.port) }
         var isPortValid by remember { mutableStateOf(true) }
-//        val oscClientConfig = remember { mutableStateOf(oscClientConfig) }
-//        Image()
+
         Text(text = "Osc client ${oscClientConfig.id}")
+
+        Image(
+            painter = painterResource(imagePath?:"fallback.jpeg"),
+            contentDescription = "",
+            modifier = Modifier.size(80.dp))
+
         OutlinedTextField(
             value = ip,
             onValueChange = {

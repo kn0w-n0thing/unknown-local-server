@@ -17,6 +17,9 @@ public class ServiceManager {
         context = new Context();
     }
 
+    public Context getContext() {
+        return context;
+    }
     public synchronized static ServiceManager getInstance() {
         if (INSTANCE == null) {
             INSTANCE = new ServiceManager();

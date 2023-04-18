@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.kotlin.logger
 import org.chronusartcenter.Context
+import org.chronusartcenter.Context.GuiListener
 import org.chronusartcenter.ServiceManager
 import org.chronusartcenter.cache.CacheService
 import org.chronusartcenter.component.ConnectIndicator
@@ -65,16 +66,28 @@ fun MainWindow(
         val oscService =
             remember { ServiceManager.getInstance().getService(ServiceManager.SERVICE_TYPE.OSC_SERVICE) as OscService }
         val oscClientConfigs by remember { mutableStateOf(oscService.readClientConfig(context)) }
+        val (oscImagePathMap, setOscImagePathMap) = remember { mutableStateOf(mutableMapOf<Int, String>(), neverEqualPolicy()) }
+        val (oscImagePath, setOscImagePath) = remember { mutableStateOf("cache/image/1.jpeg") }
 
         val newService = remember { NewsService(context) }
         val cacheService = remember { CacheService(context) }
 
         val logger = remember { logger() }
 
-        context.addGuiConsoleListener { message ->
-            consoleBuffer.append(message)
-            setConsole(consoleBuffer.getContent())
-        }
+        context.addGuiListener(
+            /* listener = */ object : GuiListener {
+            override fun onMessage(message: String) {
+                consoleBuffer.append(message)
+                setConsole(consoleBuffer.getContent())
+            }
+
+            override fun onOscImage(oscId: Int, imagePath: String) {
+                oscImagePathMap[oscId] = imagePath
+                setOscImagePathMap(oscImagePathMap)
+                // TODO: test code
+//                setOscImagePath(imagePath)
+            }
+        })
 
         fun requestForNews() {
             if (isProcessing) run {
@@ -192,16 +205,14 @@ fun MainWindow(
                             },
                             onPortChanged = { port ->
                                 oscClientConfig.port = port
-                            }
+                            },
+//                            imagePath = oscImagePath
+                            imagePath = oscImagePathMap.getOrDefault(oscClientConfig.id, null)
                         )
                     }
                 }
 
                 Button(onClick = {
-//                    logger.info(oscClientConfigs.fold(StringBuilder()) {
-//                        str: StringBuilder,
-//                        oscClientConfig: OscClientConfig -> str.append(JSON.toJSONString(oscClientConfig))
-//                    })
                     oscService.saveClientConfig(context, oscClientConfigs)
                     consoleBuffer.append("Save osc client config and restart the all the clients.\n")
                     setConsole(consoleBuffer.getContent())
