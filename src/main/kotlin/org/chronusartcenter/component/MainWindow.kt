@@ -3,10 +3,7 @@ package org.chronusartcenter.model
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +37,7 @@ val INITIAL_CONTENT = mutableListOf(
     "\n"
 )
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun MainWindow(
     onCloseRequest: () -> Unit,
@@ -62,15 +60,44 @@ fun MainWindow(
 
         val consoleBuffer = ConsoleBuffer(INITIAL_CONTENT)
         val (console, setConsole) = remember { mutableStateOf(consoleBuffer.getContent(), neverEqualPolicy()) }
+        fun consolePrintln(message: String) {
+            consoleBuffer.append(message + "\n")
+            setConsole(consoleBuffer.getContent())
+        }
 
         val oscService =
             remember { ServiceManager.getInstance().getService(ServiceManager.SERVICE_TYPE.OSC_SERVICE) as OscService }
         val oscClientConfigs by remember { mutableStateOf(oscService.readClientConfig(context)) }
         val (oscImagePathMap, setOscImagePathMap) = remember { mutableStateOf(mutableMapOf<Int, String>(), neverEqualPolicy()) }
-        val (oscImagePath, setOscImagePath) = remember { mutableStateOf("cache/image/1.jpeg") }
 
         val newService = remember { NewsService(context) }
         val cacheService = remember { CacheService(context) }
+
+        var showShutdownDialog by remember { mutableStateOf(false) }
+        if (showShutdownDialog) {
+            AlertDialog(
+                onDismissRequest = { },
+                confirmButton = {
+                    TextButton(onClick = {
+                        oscService.shutDownOscClients()
+                        consolePrintln("Shutdown all the OSC clients.")
+                        showShutdownDialog = false
+                    }) {
+                        Text(text = "OK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showShutdownDialog = false
+                    }) {
+                        Text(text = "Cancel")
+                    }
+                },
+                title = { Text(text = "Please confirm") },
+                text = { Text(text = "Are you sure to shutdown all the OSC clients?") },
+                modifier = Modifier.width(500.dp).padding(15.dp)
+            )
+        }
 
         val logger = remember { logger() }
 
@@ -84,8 +111,6 @@ fun MainWindow(
             override fun onOscImage(oscId: Int, imagePath: String) {
                 oscImagePathMap[oscId] = imagePath
                 setOscImagePathMap(oscImagePathMap)
-                // TODO: test code
-//                setOscImagePath(imagePath)
             }
         })
 
@@ -153,7 +178,7 @@ fun MainWindow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Request interval: ")
-                    OutlinedTextField(
+                    TextField(
                         value = requestIntervalMinute.toString(),
                         onValueChange = {
                             // TODO: to be modified
@@ -168,7 +193,7 @@ fun MainWindow(
                             }
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(100.dp)
+                        modifier = Modifier.width(100.dp).padding(3.dp)
                     )
                     Text("minute(s).")
                     Button(
@@ -212,12 +237,20 @@ fun MainWindow(
                     }
                 }
 
-                Button(onClick = {
-                    oscService.saveClientConfig(context, oscClientConfigs)
-                    consoleBuffer.append("Save osc client config and restart the all the clients.\n")
-                    setConsole(consoleBuffer.getContent())
-                }) {
-                    Text("Save")
+                Row (horizontalArrangement = Arrangement.spacedBy(10.dp)){
+                    Button(onClick = {
+                        oscService.saveClientConfig(context, oscClientConfigs)
+                        consoleBuffer.append("Save osc client config and restart the all the clients.\n")
+                        setConsole(consoleBuffer.getContent())
+                    }) {
+                        Text("Save")
+                    }
+
+                    Button(onClick = {
+                        showShutdownDialog = true
+                    }) {
+                        Text("Shutdown")
+                    }
                 }
             }
 
