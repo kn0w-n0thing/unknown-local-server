@@ -56,7 +56,9 @@ fun MainWindow(
         val (dalleStatus, setDalleStatus) = remember { mutableStateOf(dalleService.check()) }
         val (isProcessing, setProcessing) = remember { mutableStateOf(false) }
 
-        val (requestIntervalMinute, setRequestIntervalMinute) = remember { mutableStateOf(180) }
+        val (requestIntervalOnSuccessMinute, setRequestIntervalOnSuccessMinute) = remember { mutableStateOf(180) }
+        val requestIntervalOnFailureMinute = remember { 1 }
+        val (requestResult, setRequestResult) = remember { mutableStateOf(true) }
 
         val consoleBuffer = ConsoleBuffer(INITIAL_CONTENT)
         val (console, setConsole) = remember { mutableStateOf(consoleBuffer.getContent(), neverEqualPolicy()) }
@@ -123,10 +125,13 @@ fun MainWindow(
             if (isProcessing) run {
                 val message = "It's in the process of requesting, please try it later."
                 logger.info(message)
-                consoleBuffer.append(message)
-                setConsole(consoleBuffer.getContent())
+                consolePrintln(message)
                 return
             }
+
+            val message = "Start to process, please wait."
+            logger.info(message)
+            consolePrintln(message)
 
             coroutineScope.launch(Dispatchers.IO) {
                 setProcessing(true)
@@ -134,10 +139,20 @@ fun MainWindow(
 
                 if (headlines == null || headlines.size == 0) {
                     val message = "Failed to get headlines!"
-                    consoleBuffer.append(message)
-                    setConsole(consoleBuffer.getContent())
+                    consolePrintln(message)
                     logger.info(message)
                     setProcessing(false)
+                    setRequestResult(false)
+                    return@launch
+                }
+
+                setDalleStatus(dalleService.check())
+                if (!dalleService.check()) {
+                    val message = "Dall-e service is unavailable!"
+                    consolePrintln(message)
+                    logger.info(message)
+                    setProcessing(false)
+                    setRequestResult(false)
                     return@launch
                 }
 
@@ -153,11 +168,38 @@ fun MainWindow(
                 setConsole(consoleBuffer.getContent())
                 logger.info(message)
                 setProcessing(false)
+                setRequestResult(true)
             }
         }
 
         var requestTimerOn = remember { false }
         var requestTimer = remember { Timer() }
+
+        LaunchedEffect(requestResult) {
+            if (requestTimerOn) {
+                requestTimer.cancel()
+                requestTimer.purge()
+                requestTimer = Timer()
+            }
+
+            val requestInterval =
+                if (requestResult) {
+                    requestIntervalOnSuccessMinute
+                } else {
+                    requestIntervalOnFailureMinute
+                }
+
+            requestTimer.schedule(
+                object : TimerTask() {
+                    override fun run() {
+                        requestForNews()
+                    }
+                },
+                0,
+                TimeUnit.MINUTES.toMillis(requestInterval.toLong())
+            )
+            requestTimerOn = true
+        }
 
         MaterialTheme {
             Column(Modifier.fillMaxSize(), Arrangement.spacedBy(10.dp)) {
@@ -184,17 +226,17 @@ fun MainWindow(
                 ) {
                     Text("Request interval: ")
                     TextField(
-                        value = requestIntervalMinute.toString(),
+                        value = requestIntervalOnSuccessMinute.toString(),
                         onValueChange = {
                             // TODO: to be modified
                             if (it.isNotBlank()) {
                                 try {
-                                    setRequestIntervalMinute(it.toInt())
+                                    setRequestIntervalOnSuccessMinute(it.toInt())
                                 } catch (e: NumberFormatException) {
                                     // Do nothing
                                 }
                             } else {
-                                setRequestIntervalMinute(0)
+                                setRequestIntervalOnSuccessMinute(0)
                             }
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -216,7 +258,7 @@ fun MainWindow(
                                     }
                                 },
                                 0,
-                                TimeUnit.MINUTES.toMillis(requestIntervalMinute.toLong())
+                                TimeUnit.MINUTES.toMillis(requestIntervalOnSuccessMinute.toLong())
                             )
                             requestTimerOn = true
                         },
