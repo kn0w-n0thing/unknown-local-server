@@ -68,7 +68,12 @@ fun MainWindow(
         val oscService =
             remember { ServiceManager.getInstance().getService(ServiceManager.SERVICE_TYPE.OSC_SERVICE) as OscService }
         val oscClientConfigs by remember { mutableStateOf(oscService.readClientConfig(context)) }
-        val (oscImagePathMap, setOscImagePathMap) = remember { mutableStateOf(mutableMapOf<Int, String>(), neverEqualPolicy()) }
+        val (oscImagePathMap, setOscImagePathMap) = remember {
+            mutableStateOf(
+                mutableMapOf<Int, String>(),
+                neverEqualPolicy()
+            )
+        }
 
         val newService = remember { NewsService(context) }
         val cacheService = remember { CacheService(context) }
@@ -103,16 +108,16 @@ fun MainWindow(
 
         context.addGuiListener(
             /* listener = */ object : GuiListener {
-            override fun onMessage(message: String) {
-                consoleBuffer.append(message)
-                setConsole(consoleBuffer.getContent())
-            }
+                override fun onMessage(message: String) {
+                    consoleBuffer.append(message)
+                    setConsole(consoleBuffer.getContent())
+                }
 
-            override fun onOscImage(oscId: Int, imagePath: String) {
-                oscImagePathMap[oscId] = imagePath
-                setOscImagePathMap(oscImagePathMap)
-            }
-        })
+                override fun onOscImage(oscId: Int, imagePath: String) {
+                    oscImagePathMap[oscId] = imagePath
+                    setOscImagePathMap(oscImagePathMap)
+                }
+            })
 
         fun requestForNews() {
             if (isProcessing) run {
@@ -231,13 +236,12 @@ fun MainWindow(
                             onPortChanged = { port ->
                                 oscClientConfig.port = port
                             },
-//                            imagePath = oscImagePath
                             imagePath = oscImagePathMap.getOrDefault(oscClientConfig.id, null)
                         )
                     }
                 }
 
-                Row (horizontalArrangement = Arrangement.spacedBy(10.dp)){
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(onClick = {
                         oscService.saveClientConfig(context, oscClientConfigs)
                         consoleBuffer.append("Save osc client config and restart the all the clients.\n")

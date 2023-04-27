@@ -16,14 +16,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import org.apache.logging.log4j.kotlin.logger
 import org.chronusartcenter.model.OscClientConfig
 import org.chronusartcenter.model.isIpAddressValid
+import java.io.File
 
 @Composable
-fun OscClient(oscClientConfig: OscClientConfig,
-              onIpChanged: (String) -> Unit,
-              onPortChanged: (Int) -> Unit,
-              imagePath: String?) {
+fun OscClient(
+    oscClientConfig: OscClientConfig,
+    onIpChanged: (String) -> Unit,
+    onPortChanged: (Int) -> Unit,
+    imagePath: String?
+) {
     Column(
         modifier = Modifier,
         verticalArrangement = Arrangement.spacedBy(5.dp),
@@ -36,10 +40,23 @@ fun OscClient(oscClientConfig: OscClientConfig,
 
         Text(text = "Osc client ${oscClientConfig.id}")
 
+        // check if imagePath is valid
+        val resourceFile = File("src/main/resources/$imagePath")
+        if (!resourceFile.exists()) {
+            logger().warn("Image resource [$imagePath] doesn't exist!")
+        }
+
         Image(
-            painter = painterResource(imagePath?:"fallback.jpeg"),
+            painter = painterResource(
+                if (resourceFile.exists() && imagePath != null) {
+                    imagePath
+                } else {
+                    "fallback.jpeg"
+                }
+            ),
             contentDescription = "",
-            modifier = Modifier.size(80.dp))
+            modifier = Modifier.size(80.dp)
+        )
 
         OutlinedTextField(
             value = ip,
@@ -55,7 +72,13 @@ fun OscClient(oscClientConfig: OscClientConfig,
             modifier = Modifier.width(180.dp)
         )
         Text(
-            modifier = Modifier.alpha(if (!isIpValid) { 100.0F } else { 0.0F }),
+            modifier = Modifier.alpha(
+                if (!isIpValid) {
+                    100.0F
+                } else {
+                    0.0F
+                }
+            ),
             text = "Invalid IP Address!",
             color = Color.Red
         )
@@ -80,7 +103,13 @@ fun OscClient(oscClientConfig: OscClientConfig,
             modifier = Modifier.width(180.dp)
         )
         Text(
-            modifier = Modifier.alpha(if (!isPortValid) { 100.0F } else { 0.0F }),
+            modifier = Modifier.alpha(
+                if (!isPortValid) {
+                    100.0F
+                } else {
+                    0.0F
+                }
+            ),
             text = "Invalid Port!",
             color = Color.Red
         )

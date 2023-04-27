@@ -93,6 +93,7 @@ public class CacheService {
     public void saveImage(String fileName, String base64Image) {
         String directory = "src/main/resources/cache/image";
         if (!createDirectoryIfNecessary(directory)) {
+            logger.error("Failed to mkdir of " + directory);
             return;
         }
 
@@ -101,6 +102,18 @@ public class CacheService {
             stream.write(decodedBytes);
         } catch (IOException exception) {
             logger.error(exception.toString());
+        }
+
+        // Set the image file to be executable, otherwise it cannot be accessed through apache service
+        File file = new File(directory + File.separator + fileName);
+        try {
+            var result = file.setExecutable(true);
+            if (!result) {
+                logger.warn("Can't set " + file.getAbsolutePath()  + "to be executable.");
+            }
+        } catch (Exception exception) {
+            logger.warn("Exception is thrown when set " + file.getAbsolutePath()  + "to be executable. Exception: "
+                    + exception);
         }
     }
 

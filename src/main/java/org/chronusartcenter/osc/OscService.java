@@ -143,6 +143,11 @@ public class OscService {
                 OSCPortOut client = new OSCPortOut(InetAddress.getByName(ip), port);
                 final List<Object> arg = new LinkedList<>();
                 var headline = getRandomHeadline();
+                if (headline == null) {
+                    logger.warn("Can not get a random headline");
+                    return;
+                }
+
                 logger.info("Send to Screen " + id
                         + "of socket: " + client.getRemoteAddress()
                         + " of  headline: " + JSONObject.toJSONString(headline));
