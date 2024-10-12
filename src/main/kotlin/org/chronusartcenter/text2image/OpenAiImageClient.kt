@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 @Serializable
 data class ImageGenerationRequest(
@@ -28,8 +29,22 @@ data class ImageData(
     val url: String
 )
 
+fun createOkHttpClientWithTimeouts(
+    connectTimeout: Long = 10,
+    readTimeout: Long = 30,
+    writeTimeout: Long = 30,
+    callTimeout: Long = 60
+): OkHttpClient {
+    return OkHttpClient.Builder()
+        .connectTimeout(connectTimeout, TimeUnit.SECONDS)
+        .readTimeout(readTimeout, TimeUnit.SECONDS)
+        .writeTimeout(writeTimeout, TimeUnit.SECONDS)
+        .callTimeout(callTimeout, TimeUnit.SECONDS)
+        .build()
+}
+
 class OpenAIImageClient(private val apiKey: String) {
-    private val client = OkHttpClient()
+    private val client = createOkHttpClientWithTimeouts()
     private val json = Json { ignoreUnknownKeys = true }
 
     fun generateImage(prompt: String, callback: (String?, Exception?) -> Unit) {
