@@ -2,9 +2,7 @@ package org.chronusartcenter
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -21,23 +19,27 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.chronusartcenter.text2image.ModelsLabImageClient
 import org.chronusartcenter.text2image.OpenAIImageClient
 import org.jetbrains.skia.Image
 import java.io.ByteArrayInputStream
 import java.util.*
 import javax.imageio.ImageIO
-import androidx.compose.material.*
 
 val dotenv = dotenv()
 
+enum class ModelType {
+    DALL_E_3,
+    MODELS_LAB,
+}
+
 @Composable
-fun DropdownMenu() {
+fun DropdownMenu(onSelect: (index: Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var selectedIndex by remember { mutableStateOf(0) }
     val items = listOf("DallE 3", "Models Lab")
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Selected item: ${items[selectedIndex]}")
         Spacer(Modifier.height(8.dp))
         Box {
             Button(onClick = { expanded = true }) {
@@ -51,6 +53,7 @@ fun DropdownMenu() {
                     DropdownMenuItem(onClick = {
                         selectedIndex = index
                         expanded = false
+                        onSelect(index)
                     }) {
                         Text(item)
                     }
@@ -90,14 +93,17 @@ fun main() = application {
         state = rememberWindowState(width = 1440.dp, height = 1080.dp),
     ) {
         val openaiApiKey = dotenv["OPENAI_API_KEY"] ?: ""
+        val modelsLabApiKey = dotenv["MODELS_LAB_API_KEY"] ?: ""
 
         var promptText by remember { mutableStateOf("") }
         var imageUrl by remember { mutableStateOf("https://oaidalleapiprodscus.blob.core.windows.net/private/org-jsVRxHKpVzDRuxdrNICQhXGS/user-6kxuYTQmwOkhch4yitiTpETM/img-NSbMlGz9T0b2P82jMCpQ51aL.png?st=2024-10-12T06%3A56%3A24Z&se=2024-10-12T08%3A56%3A24Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-10-11T23%3A20%3A01Z&ske=2024-10-12T23%3A20%3A01Z&sks=b&skv=2024-08-04&sig=nB8UuonhRLpcBW12M4WXdjXydmNhf9ROInaUSdmJhsU%3D") }
         var isLoading by remember { mutableStateOf(false) }
+        var currentModel by remember { mutableStateOf(ModelType.DALL_E_3) }
 
         var image by remember { mutableStateOf<ImageBitmap?>(null) }
 
         val openAIImageClient = remember { OpenAIImageClient(openaiApiKey) }
+        val modelsLabImageClient = remember { ModelsLabImageClient(modelsLabApiKey) }
 
         LaunchedEffect(imageUrl) {
             isLoading = true
@@ -110,7 +116,7 @@ fun main() = application {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Column {
-                Row {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("Prompt")
 
                     TextField(
@@ -121,19 +127,43 @@ fun main() = application {
                     Button(
                         onClick = {
                             isLoading = true
-                            openAIImageClient.generateImage(promptText) { result, error ->
-                                isLoading = false
+                            when (currentModel) {
+                                ModelType.DALL_E_3 -> {
+                                    openAIImageClient.generateImage(promptText) { result, error ->
+                                        isLoading = false
 
-                                error?.run {
-                                    println("Error: ${error.message}")
-                                } ?: let {
-                                    result?.let { value ->
-                                        imageUrl = value
-                                    } ?: run {
-                                        println("No image generated")
+                                        error?.run {
+                                            println("Error: ${error.message}")
+                                        } ?: let {
+                                            result?.let { value ->
+                                                imageUrl = value
+                                            } ?: run {
+                                                println("No image generated")
+                                            }
+                                        }
+                                    }
+                                }
+
+                                ModelType.MODELS_LAB -> {
+                                    modelsLabImageClient.generateImage(
+                                        promptText,
+                                        ModelsLabImageClient.ApiType.REALTIME_API
+                                    ) { result, error ->
+                                        isLoading = false
+
+                                        error?.run {
+                                            println("Error: ${error.message}")
+                                        } ?: let {
+                                            result?.let { value ->
+                                                imageUrl = value
+                                            } ?: run {
+                                                println("No image generated")
+                                            }
+                                        }
                                     }
                                 }
                             }
+
                         },
                         enabled = !isLoading
                     ) {
@@ -141,13 +171,15 @@ fun main() = application {
                     }
                 }
 
-                Column(
+                Row(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("Model")
 
-                    DropdownMenu()
+                    DropdownMenu { index ->
+                        currentModel = ModelType.values()[index]
+                    }
                 }
             }
 
