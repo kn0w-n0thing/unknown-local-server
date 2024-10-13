@@ -26,8 +26,39 @@ import org.jetbrains.skia.Image
 import java.io.ByteArrayInputStream
 import java.util.*
 import javax.imageio.ImageIO
+import androidx.compose.material.*
 
 val dotenv = dotenv()
+
+@Composable
+fun DropdownMenu() {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedIndex by remember { mutableStateOf(0) }
+    val items = listOf("DallE 3", "Models Lab")
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Selected item: ${items[selectedIndex]}")
+        Spacer(Modifier.height(8.dp))
+        Box {
+            Button(onClick = { expanded = true }) {
+                Text(items[selectedIndex])
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                items.forEachIndexed { index, item ->
+                    DropdownMenuItem(onClick = {
+                        selectedIndex = index
+                        expanded = false
+                    }) {
+                        Text(item)
+                    }
+                }
+            }
+        }
+    }
+}
 
 suspend fun loadImageFromUrl(url: String): ImageBitmap? {
     val client = HttpClient(CIO)
@@ -75,20 +106,17 @@ fun main() = application {
         }
 
         Row(
-            modifier = Modifier.padding(20.dp) // Add padding to all sides
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Column {
                 Row {
                     Text("Prompt")
 
-                    Spacer(modifier = Modifier.size(20.dp))
-
                     TextField(
                         value = promptText,
                         onValueChange = { promptText = it },
                     )
-
-                    Spacer(modifier = Modifier.size(20.dp))
 
                     Button(
                         onClick = {
@@ -111,6 +139,15 @@ fun main() = application {
                     ) {
                         Text("Generate")
                     }
+                }
+
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Model")
+
+                    DropdownMenu()
                 }
             }
 

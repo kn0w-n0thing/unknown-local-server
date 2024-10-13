@@ -10,6 +10,7 @@ val ktorVersion = "2.3.3"
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation(compose.material)
 
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.26")
