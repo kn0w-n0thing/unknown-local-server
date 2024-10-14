@@ -35,3 +35,11 @@ compose.desktop {
         mainClass = "org.chronusartcenter.MainKt"
     }
 }
+
+tasks.register<JavaExec>("runTestMain") {
+    group = "application"
+    description = "Run the TestMain.kt file"
+
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("org.chronusartcenter.TestMainKt")
+}
