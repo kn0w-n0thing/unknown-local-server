@@ -1,13 +1,20 @@
 package org.chronusartcenter
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.loadSvgPainter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -23,6 +30,7 @@ import org.chronusartcenter.text2image.ModelsLabImageClient
 import org.chronusartcenter.text2image.OpenAIImageClient
 import org.jetbrains.skia.Image
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.util.*
 import javax.imageio.ImageIO
 
@@ -31,6 +39,28 @@ val dotenv = dotenv()
 enum class ModelType {
     DALL_E_3,
     MODELS_LAB,
+}
+
+@Composable
+fun SpinnerAnimation(
+    modifier: Modifier = Modifier.size(100.dp),
+) {
+    val infiniteTransition = rememberInfiniteTransition()
+    val angle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+    )
+
+    val painter: Painter = painterResource("tube_spinner.svg")
+    Image(
+        painter = painter,
+        contentDescription = "SVG Image",
+        modifier = modifier.rotate(angle)
+    )
 }
 
 @Composable
@@ -183,13 +213,20 @@ fun main() = application {
                 }
             }
 
-            if (image != null) {
-                Image(
-                    bitmap = image!!,
-                    contentDescription = "Loaded image",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
+            Box (
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (image != null && !isLoading) {
+                    Image(
+                        bitmap = image!!,
+                        contentDescription = "Loaded image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                } else if (isLoading) {
+                    SpinnerAnimation()
+                }
             }
         }
     }
