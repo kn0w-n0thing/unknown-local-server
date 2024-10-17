@@ -1,6 +1,5 @@
 package org.chronusartcenter.model
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -19,12 +18,11 @@ import org.chronusartcenter.Context
 import org.chronusartcenter.Context.GuiListener
 import org.chronusartcenter.ServiceManager
 import org.chronusartcenter.cache.CacheService
-import org.chronusartcenter.component.ConnectIndicator
 import org.chronusartcenter.component.Console
 import org.chronusartcenter.component.OscClient
-import org.chronusartcenter.dalle.DalleService
 import org.chronusartcenter.news.NewsService
 import org.chronusartcenter.osc.OscService
+import org.chronusartcenter.service.ImageGenerationService
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -52,8 +50,7 @@ fun MainWindow(
     ) {
         val coroutineScope = rememberCoroutineScope()
 
-        val dalleService = DalleService(context)
-        val (dalleStatus, setDalleStatus) = remember { mutableStateOf(dalleService.check()) }
+        val imageGenerationService = remember { ImageGenerationService() }
         val (isProcessing, setProcessing) = remember { mutableStateOf(false) }
 
         val (requestIntervalOnSuccessMinute, setRequestIntervalOnSuccessMinute) = remember { mutableStateOf(180) }
@@ -146,21 +143,19 @@ fun MainWindow(
                     return@launch
                 }
 
-                setDalleStatus(dalleService.check())
-                if (!dalleService.check()) {
-                    val message = "Dall-e service is unavailable!"
-                    consolePrintln(message)
-                    logger.info(message)
-                    setProcessing(false)
-                    setRequestResult(false)
-                    return@launch
-                }
-
                 headlines.forEachIndexed generateImages@{ index, headlineModel ->
-                    val image = dalleService.generateImage(headlineModel.translation, 1) ?: return@generateImages
-                    headlineModel.index = index
-                    cacheService.saveImage(index.toString() + "." + image.right, image.left.get(0))
-                    cacheService.saveHeadline(headlineModel)
+                    try {
+                        val imageUrl =
+                            imageGenerationService.generateImage(headlineModel.translation)
+                        val imageBase64 = imageGenerationService.getBase64FromImageUrl(imageUrl)
+                        headlineModel.index = index
+                        cacheService.saveImage("$index.jpeg", imageBase64)
+                        cacheService.saveHeadline(headlineModel)
+                    } catch (e: Exception) {
+                        consolePrintln(e.toString())
+                        logger.error(e.printStackTrace())
+                    }
+
                 }
 
                 val message = "Processing completed."
@@ -202,20 +197,7 @@ fun MainWindow(
         }
 
         MaterialTheme {
-            Column(Modifier.fillMaxSize(), Arrangement.spacedBy(10.dp)) {
-                Row(Modifier.wrapContentSize().padding(10.dp), Arrangement.spacedBy(5.dp)) {
-                    ConnectIndicator(
-                        name = "local-server",
-                        isConnected = true
-                    )
-                    ConnectIndicator(
-                        modifier = Modifier.clickable(
-                            onClick = { setDalleStatus(dalleService.check()) }
-                        ),
-                        name = "dalle-mini-server",
-                        isConnected = dalleStatus
-                    )
-                }
+            Column(Modifier.fillMaxSize().padding(24.dp), Arrangement.spacedBy(24.dp)) {
 
                 Console(Modifier.width(720.dp).height(540.dp), console)
 
@@ -262,7 +244,7 @@ fun MainWindow(
                             )
                             requestTimerOn = true
                         },
-                        enabled = !isProcessing && dalleStatus,
+                        enabled = !isProcessing,
                     ) {
                         Text("Start")
                     }

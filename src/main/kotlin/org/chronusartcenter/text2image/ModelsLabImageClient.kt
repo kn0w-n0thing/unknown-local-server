@@ -29,12 +29,12 @@ class ModelsLabImageClient(private val apiKey: String) {
 
     @Serializable
     data class ImageGenerationResponse(
-        val status: String,
-        val generationTime: Double,
-        val id: Long,
-        val output: List<String>,
-        val proxy_links: List<String>,
-        val meta: Meta
+        val status: String? = null,
+        val generationTime: Double? = null,
+        val id: Long? = null,
+        val output: List<String> = emptyList(),
+        val proxy_links: List<String> = emptyList(),
+        val meta: Meta? = null
     )
 
     @Serializable
