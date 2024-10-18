@@ -5,16 +5,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.loadSvgPainter
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -26,13 +24,14 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.chronusartcenter.component.ComboBox
 import org.chronusartcenter.text2image.ModelsLabImageClient
 import org.chronusartcenter.text2image.OpenAIImageClient
 import org.jetbrains.skia.Image
 import java.io.ByteArrayInputStream
-import java.io.File
 import java.util.*
 import javax.imageio.ImageIO
+
 
 val dotenv = dotenv()
 
@@ -61,36 +60,6 @@ fun SpinnerAnimation(
         contentDescription = "SVG Image",
         modifier = modifier.rotate(angle)
     )
-}
-
-@Composable
-fun DropdownMenu(onSelect: (index: Int) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    var selectedIndex by remember { mutableStateOf(0) }
-    val items = listOf("DallE 3", "Models Lab")
-
-    Column(modifier = Modifier.padding(16.dp)) {
-        Spacer(Modifier.height(8.dp))
-        Box {
-            Button(onClick = { expanded = true }) {
-                Text(items[selectedIndex])
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                items.forEachIndexed { index, item ->
-                    DropdownMenuItem(onClick = {
-                        selectedIndex = index
-                        expanded = false
-                        onSelect(index)
-                    }) {
-                        Text(item)
-                    }
-                }
-            }
-        }
-    }
 }
 
 suspend fun loadImageFromUrl(url: String): ImageBitmap? {
@@ -134,6 +103,8 @@ fun main() = application {
 
         val openAIImageClient = remember { OpenAIImageClient(openaiApiKey) }
         val modelsLabImageClient = remember { ModelsLabImageClient(modelsLabApiKey) }
+
+        val items = listOf("DallE 3", "Models Lab")
 
         LaunchedEffect(imageUrl) {
             isLoading = true
@@ -207,7 +178,7 @@ fun main() = application {
                 ) {
                     Text("Model")
 
-                    DropdownMenu { index ->
+                    ComboBox(items) { index ->
                         currentModel = ModelType.values()[index]
                     }
                 }
