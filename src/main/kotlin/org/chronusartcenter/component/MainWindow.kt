@@ -23,6 +23,7 @@ import org.chronusartcenter.component.OscClient
 import org.chronusartcenter.news.NewsService
 import org.chronusartcenter.osc.OscService
 import org.chronusartcenter.service.ImageGenerationService
+import org.chronusartcenter.text2image.ModelsLabImageClient
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -145,8 +146,10 @@ fun MainWindow(
 
                 headlines.forEachIndexed generateImages@{ index, headlineModel ->
                     try {
+                        val config: ModelsLabImageClient.Config =
+                            ModelsLabImageClient.Config(modelType = ModelsLabImageClient.ModelType.REALTIME_API)
                         val imageUrl =
-                            imageGenerationService.generateImage(headlineModel.translation)
+                            imageGenerationService.generateImage(headlineModel.translation, config)
                         val imageBase64 = imageGenerationService.getBase64FromImageUrl(imageUrl)
                         headlineModel.index = index
                         cacheService.saveImage("$index.jpeg", imageBase64)

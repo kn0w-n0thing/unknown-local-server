@@ -21,10 +21,10 @@ class ImageGenerationService {
         openAiClient = OpenAIImageClient(openaiApiKey)
     }
 
-    suspend fun generateImage(prompt: String): String = withContext(Dispatchers.IO) {
+    suspend fun generateImage(prompt: String, config: ModelsLabImageClient.Config): String = withContext(Dispatchers.IO) {
         val channel = Channel<Result<String>>()
 
-        modelsLabClient.generateImage(prompt, ModelsLabImageClient.ApiType.REALTIME_API) { imageUrl, error ->
+        modelsLabClient.generateImage(prompt, config) { imageUrl, error ->
             when {
                 error != null -> channel.trySend(Result.failure(error))
                 imageUrl != null -> channel.trySend(Result.success(imageUrl))

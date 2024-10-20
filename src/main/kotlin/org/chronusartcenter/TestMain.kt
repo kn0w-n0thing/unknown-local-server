@@ -3,7 +3,9 @@ package org.chronusartcenter
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material.Button
+import androidx.compose.material.Text
+import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,13 +27,11 @@ import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.chronusartcenter.component.ComboBox
+import org.chronusartcenter.component.ModelsLabConfigBox
 import org.chronusartcenter.text2image.ModelsLabImageClient
 import org.chronusartcenter.text2image.OpenAIImageClient
 import org.jetbrains.skia.Image
-import java.io.ByteArrayInputStream
 import java.util.*
-import javax.imageio.ImageIO
-
 
 val dotenv = dotenv()
 
@@ -68,7 +68,6 @@ suspend fun loadImageFromUrl(url: String): ImageBitmap? {
         try {
             val response: HttpResponse = client.get(url)
             val bytes = response.readBytes()
-            val bitmap = ImageIO.read(ByteArrayInputStream(bytes))
             Image.makeFromEncoded(bytes).toComposeImageBitmap()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -103,8 +102,9 @@ fun main() = application {
 
         val openAIImageClient = remember { OpenAIImageClient(openaiApiKey) }
         val modelsLabImageClient = remember { ModelsLabImageClient(modelsLabApiKey) }
+        var modelsLabConfig by remember { mutableStateOf(ModelsLabImageClient.Config(modelType = ModelsLabImageClient.ModelType.REALTIME_API)) }
 
-        val items = listOf("DallE 3", "Models Lab")
+        val apiList = listOf("DallE 3", "Models Lab")
 
         LaunchedEffect(imageUrl) {
             isLoading = true
@@ -117,7 +117,10 @@ fun main() = application {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Column {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text("Prompt")
 
                     TextField(
@@ -148,7 +151,7 @@ fun main() = application {
                                 ModelType.MODELS_LAB -> {
                                     modelsLabImageClient.generateImage(
                                         promptText,
-                                        ModelsLabImageClient.ApiType.REALTIME_API
+                                        modelsLabConfig
                                     ) { result, error ->
                                         isLoading = false
 
@@ -174,13 +177,23 @@ fun main() = application {
 
                 Row(
                     modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Model")
+                    Text("API type")
 
-                    ComboBox(items) { index ->
+                    ComboBox(apiList) { index ->
                         currentModel = ModelType.values()[index]
                     }
+                }
+
+                if (currentModel == ModelType.MODELS_LAB) {
+                    ModelsLabConfigBox(modelsLabConfig,
+                        onNegativePromptChange = { modelsLabConfig = modelsLabConfig.copy(negativePrompt = it) },
+                        onModelTypeChange = { modelsLabConfig = modelsLabConfig.copy(modelType = it) },
+                        onEnhanceTypeChange = { modelsLabConfig = modelsLabConfig.copy(enhanceType = it) },
+                        onModelIdChange = { modelsLabConfig = modelsLabConfig.copy(modelId = it)}
+                    )
                 }
             }
 
