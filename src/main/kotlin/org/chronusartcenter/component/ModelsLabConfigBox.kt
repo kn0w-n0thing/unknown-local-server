@@ -2,6 +2,7 @@ package org.chronusartcenter.component
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.*
@@ -53,7 +54,9 @@ fun ModelsLabConfigBox(
     onEnhanceTypeChange: (ModelsLabImageClient.EnhanceType?) -> Unit,
     onModelIdChange: (ModelsLabImageClient.ModelId?) -> Unit,
     onWithChange: (Int) -> Unit,
-    onHeightChange: (Int) -> Unit
+    onHeightChange: (Int) -> Unit,
+    onOkClick: (() -> Unit) ? = null,
+    modifier: Modifier = Modifier
 ) {
     var width by remember { mutableStateOf(1024) }
     var height by remember { mutableStateOf(1024) }
@@ -62,7 +65,7 @@ fun ModelsLabConfigBox(
     var enhanceType by remember { mutableStateOf<ModelsLabImageClient.EnhanceType?>(null) }
     var modelId by remember { mutableStateOf<ModelsLabImageClient.ModelId?>(ModelsLabImageClient.ModelId.FLUX) }
 
-    Box {
+    Box(modifier) {
         Column {
             Row (horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = CenterVertically) {
                 Text(modifier = Modifier.width(120.dp), text = "Width: ")
@@ -148,6 +151,12 @@ fun ModelsLabConfigBox(
                         onModelIdChange(modelId)
                     }
                 }
+            }
+
+            Button(onClick = {
+                onOkClick?.invoke()
+            }) {
+                Text("OK")
             }
 
         }

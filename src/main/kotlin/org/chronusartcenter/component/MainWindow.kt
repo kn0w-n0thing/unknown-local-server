@@ -19,6 +19,7 @@ import org.chronusartcenter.Context.GuiListener
 import org.chronusartcenter.ServiceManager
 import org.chronusartcenter.cache.CacheService
 import org.chronusartcenter.component.Console
+import org.chronusartcenter.component.ModelsLabConfigBox
 import org.chronusartcenter.component.OscClient
 import org.chronusartcenter.news.NewsService
 import org.chronusartcenter.osc.OscService
@@ -77,6 +78,34 @@ fun MainWindow(
 
         val newService = remember { NewsService(context) }
         val cacheService = remember { CacheService(context) }
+
+        var modelsLabConfig by remember { mutableStateOf(ModelsLabImageClient.Config(ModelsLabImageClient.ModelType.COMMUNITY_API)) }
+        var showConfigDialog by remember { mutableStateOf(false) }
+        if (showConfigDialog) {
+            Window(
+                onCloseRequest = {},
+                title = title,
+                alwaysOnTop = true,
+                resizable = true,
+                undecorated = true // Remove window decorations if you want a more custom look
+            ) {
+                Surface(
+                    modifier = Modifier.wrapContentSize()
+                ) {
+                    ModelsLabConfigBox(
+                        modelsLabConfig,
+                        onNegativePromptChange = { modelsLabConfig = modelsLabConfig.copy(negativePrompt = it) },
+                        onModelTypeChange = { modelsLabConfig = modelsLabConfig.copy(modelType = it) },
+                        onEnhanceTypeChange = { modelsLabConfig = modelsLabConfig.copy(enhanceType = it) },
+                        onModelIdChange = { modelsLabConfig = modelsLabConfig.copy(modelId = it) },
+                        onWithChange = { modelsLabConfig = modelsLabConfig.copy(width = it) },
+                        onHeightChange = { modelsLabConfig = modelsLabConfig.copy(height = it) },
+                        onOkClick = { showConfigDialog = false },
+                        modifier = Modifier.padding(16.dp).wrapContentSize()
+                    )
+                }
+            }
+        }
 
         var showShutdownDialog by remember { mutableStateOf(false) }
         if (showShutdownDialog) {
@@ -146,19 +175,19 @@ fun MainWindow(
 
                 headlines.forEachIndexed generateImages@{ index, headlineModel ->
                     try {
-                        val config: ModelsLabImageClient.Config =
-                            ModelsLabImageClient.Config(modelType = ModelsLabImageClient.ModelType.REALTIME_API)
                         val imageUrl =
-                            imageGenerationService.generateImage(headlineModel.translation, config)
+                            imageGenerationService.generateImage(headlineModel.translation, modelsLabConfig)
                         val imageBase64 = imageGenerationService.getBase64FromImageUrl(imageUrl)
                         headlineModel.index = index
                         cacheService.saveImage("$index.jpeg", imageBase64)
                         cacheService.saveHeadline(headlineModel)
                     } catch (e: Exception) {
-                        consolePrintln(e.toString())
+                        e.message?.let {
+                            consolePrintln(it)
+                            logger.error(it)
+                        }
                         logger.error(e.printStackTrace())
                     }
-
                 }
 
                 val message = "Processing completed."
@@ -187,16 +216,16 @@ fun MainWindow(
                     requestIntervalOnFailureMinute
                 }
 
-            requestTimer.schedule(
-                object : TimerTask() {
-                    override fun run() {
-                        requestForNews()
-                    }
-                },
-                0,
-                TimeUnit.MINUTES.toMillis(requestInterval.toLong())
-            )
-            requestTimerOn = true
+//            requestTimer.schedule(
+//                object : TimerTask() {
+//                    override fun run() {
+//                        requestForNews()
+//                    }
+//                },
+//                0,
+//                TimeUnit.MINUTES.toMillis(requestInterval.toLong())
+//            )
+//            requestTimerOn = true
         }
 
         MaterialTheme {
@@ -251,6 +280,15 @@ fun MainWindow(
                     ) {
                         Text("Start")
                     }
+
+                    Spacer(modifier = Modifier.size(16.dp))
+
+                    Button(onClick = {
+                        showConfigDialog = true
+                    }, enabled = !isProcessing) {
+                        Text("Image Configuration")
+                    }
+
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
