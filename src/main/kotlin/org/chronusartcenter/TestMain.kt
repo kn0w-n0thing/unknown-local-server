@@ -192,7 +192,9 @@ fun main() = application {
                         onNegativePromptChange = { modelsLabConfig = modelsLabConfig.copy(negativePrompt = it) },
                         onModelTypeChange = { modelsLabConfig = modelsLabConfig.copy(modelType = it) },
                         onEnhanceTypeChange = { modelsLabConfig = modelsLabConfig.copy(enhanceType = it) },
-                        onModelIdChange = { modelsLabConfig = modelsLabConfig.copy(modelId = it)}
+                        onModelIdChange = { modelsLabConfig = modelsLabConfig.copy(modelId = it)},
+                        onWithChange = { modelsLabConfig = modelsLabConfig.copy(width = it)},
+                        onHeightChange = { modelsLabConfig = modelsLabConfig.copy(height = it)},
                     )
                 }
             }

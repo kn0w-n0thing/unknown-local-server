@@ -234,7 +234,9 @@ class ModelsLabImageClient(private val apiKey: String) {
         val modelType: ModelType,
         val negativePrompt: String? = null,
         val enhanceType: EnhanceType? = null,
-        val modelId: ModelId? = null
+        val modelId: ModelId? = null,
+        val width: Int = 1024,
+        val height: Int = 1024
     )
 
     enum class ModelType {
@@ -253,12 +255,15 @@ class ModelsLabImageClient(private val apiKey: String) {
         val negative_prompt: String? = null,
         val enhance_prompt: Boolean = false,
         val enhance_style: String? = null,
-        val model_id: String? = null
+        val model_id: String? = null,
+        val width: Int = 1024,
+        val height: Int = 1024
     )
 
     @Serializable
     data class ImageGenerationResponse(
         val status: String? = null,
+        val message: String? = null,
         val generationTime: Double? = null,
         val id: Long? = null,
         val output: List<String> = emptyList(),
@@ -306,6 +311,8 @@ class ModelsLabImageClient(private val apiKey: String) {
             enhance_prompt = config.enhanceType != null,
             enhance_style = config.enhanceType?.value,
             model_id = config.modelId?.value,
+            width = config.width,
+            height = config.height
         )
 
         val requestBodyJson = json.encodeToString(requestBody)
@@ -334,6 +341,9 @@ class ModelsLabImageClient(private val apiKey: String) {
                         val responseBody = response.body?.string()
                         try {
                             val imageResponse = json.decodeFromString<ImageGenerationResponse>(responseBody ?: "")
+                            if (imageResponse.status == "error") {
+                                callback(null, java.lang.Exception(imageResponse.message))
+                            }
                             val imageUrl = imageResponse.output.firstOrNull()
                             callback(imageUrl, null)
                         } catch (e: Exception) {

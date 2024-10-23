@@ -1,15 +1,49 @@
 package org.chronusartcenter.component
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment.Companion.CenterVertically
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.chronusartcenter.text2image.ModelsLabImageClient
+
+@Composable
+fun IntegerTextField(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    label: @Composable (() -> Unit)? = null,
+    isError: Boolean = false,
+    enabled: Boolean = true,
+) {
+    val textState = remember(value) {
+        mutableStateOf(if (value == 0) "" else value.toString())
+    }
+
+    TextField(
+        value = textState.value,
+        onValueChange = { newValue ->
+            if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\$"))) {
+                textState.value = newValue
+                newValue.toIntOrNull()?.let { onValueChange(it) } ?: onValueChange(0)
+            }
+        },
+        modifier = modifier,
+        label = label,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done
+        ),
+        singleLine = true,
+        isError = isError,
+        enabled = enabled
+    )
+}
 
 @Composable
 fun ModelsLabConfigBox(
@@ -17,15 +51,40 @@ fun ModelsLabConfigBox(
     onNegativePromptChange: (String) -> Unit,
     onModelTypeChange: (ModelsLabImageClient.ModelType) -> Unit,
     onEnhanceTypeChange: (ModelsLabImageClient.EnhanceType?) -> Unit,
-    onModelIdChange: (ModelsLabImageClient.ModelId?) -> Unit
+    onModelIdChange: (ModelsLabImageClient.ModelId?) -> Unit,
+    onWithChange: (Int) -> Unit,
+    onHeightChange: (Int) -> Unit
 ) {
+    var width by remember { mutableStateOf(1024) }
+    var height by remember { mutableStateOf(1024) }
     var modelType by remember { mutableStateOf(ModelsLabImageClient.ModelType.COMMUNITY_API) }
     var negativePrompt by remember { mutableStateOf(config.negativePrompt) }
     var enhanceType by remember { mutableStateOf<ModelsLabImageClient.EnhanceType?>(null) }
-    var modleld by remember { mutableStateOf<ModelsLabImageClient.ModelId?>(ModelsLabImageClient.ModelId.FLUX) }
+    var modelId by remember { mutableStateOf<ModelsLabImageClient.ModelId?>(ModelsLabImageClient.ModelId.FLUX) }
 
     Box {
         Column {
+            Row (horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = CenterVertically) {
+                Text(modifier = Modifier.width(120.dp), text = "Width: ")
+                IntegerTextField(
+                    modifier = Modifier.width(120.dp),
+                    value = width,
+                    onValueChange = {
+                        width = it
+                        onWithChange(width)
+                    },
+                )
+
+                Text(modifier = Modifier.width(120.dp), text = "Height: ")
+                IntegerTextField(
+                    modifier = Modifier.width(120.dp),
+                    value = height,
+                    onValueChange = {
+                        height = it
+                        onHeightChange(height)
+                    },
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = CenterVertically) {
                 Text("Model Type")
 
@@ -33,7 +92,7 @@ fun ModelsLabConfigBox(
                 ComboBox(list) {
                     modelType = ModelsLabImageClient.ModelType.fromOrdinal(it) ?: ModelsLabImageClient.ModelType.COMMUNITY_API
                     if (modelType != ModelsLabImageClient.ModelType.COMMUNITY_API) {
-                        modleld = null
+                        modelId = null
                         onModelIdChange(null)
                     }
                     onModelTypeChange(modelType)
@@ -84,9 +143,9 @@ fun ModelsLabConfigBox(
 
                     val list = ModelsLabImageClient.ModelId.values().map { it.name }
                     ComboBox(list) {
-                        modleld =
+                        modelId =
                             ModelsLabImageClient.ModelId.fromOrdinal(it) ?: ModelsLabImageClient.ModelId.FLUX
-                        onModelIdChange(modleld)
+                        onModelIdChange(modelId)
                     }
                 }
             }
