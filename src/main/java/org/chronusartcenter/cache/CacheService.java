@@ -35,7 +35,7 @@ public class CacheService {
         var headlineList = loadHeadlines();
         if (headlineList == null) {
             var newHeadlineList = new ArrayList<>(List.of(insertHeadline));
-            saveHeadlines(newHeadlineList);
+            saveHeadlineList(newHeadlineList);
             return JSON.toJSONString(newHeadlineList, PrettyFormat);
         } else {
             var duplicatedIndex = headlineList.stream()
@@ -46,10 +46,10 @@ public class CacheService {
                 duplicatedIndex.get().set(insertHeadline);
             }
         }
-        return saveHeadlines(headlineList);
+        return saveHeadlineList(headlineList);
     }
 
-    public String saveHeadlines(List<HeadlineModel> headlineModelList) {
+    private String saveHeadlineList(List<HeadlineModel> headlineModelList) {
         if (headlineModelList == null || headlineModelList.size() == 0) {
             return null;
         }

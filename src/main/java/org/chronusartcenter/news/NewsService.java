@@ -1,5 +1,6 @@
 package org.chronusartcenter.news;
 
+import com.alibaba.fastjson2.JSONArray;
 import org.apache.log4j.Logger;
 import org.chronusartcenter.Context;
 import org.chronusartcenter.network.OkHttpWrapper;
@@ -10,6 +11,7 @@ import javax.xml.stream.events.EndElement;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -22,19 +24,24 @@ public class NewsService {
         this.context = globalContext;
     }
 
-    private String getRssUrl() throws Exception {
+    private List<String> getRssUrls() throws Exception {
         try {
-            return context.loadConfig().getString("rssUrl");
+            JSONArray jsonArray = context.loadConfig().getJSONArray("rssUrl");
+            List<String> urls = new ArrayList<>();
+            for (int i = 0; i < jsonArray.size(); i++) {
+                urls.add(jsonArray.getString(i));
+            }
+            return urls;
         } catch (Exception exception) {
-            throw new Exception("Fail to get RSS URL!");
+            throw new Exception("Failed to get RSS URLs!");
         }
     }
 
-    public List<HeadlineModel> fetchHeadlines() {
+    private List<HeadlineModel> fetchHeadlinesInternal(String rssUrl) {
         OkHttpWrapper okHttpWrapper = new OkHttpWrapper();
         List<HeadlineModel> resultList = new LinkedList<>();
         try {
-            var response = okHttpWrapper.get(getRssUrl());
+            var response = okHttpWrapper.get(rssUrl);
             XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
             XMLEventReader reader = xmlInputFactory.createXMLEventReader(new StringReader(response));
             HeadlineModel headlineItem = new HeadlineModel();
@@ -73,6 +80,20 @@ public class NewsService {
         }
 
         return resultList;
+    }
+
+    public List<HeadlineModel> fetchHeadlines() {
+        try {
+            List<HeadlineModel> ret = new LinkedList<>();
+            var rssUrls = getRssUrls();
+            for (var url : rssUrls) {
+                ret.addAll(fetchHeadlinesInternal(url));
+            }
+            return ret;
+        } catch (Exception exception) {
+            logger.error(exception.toString());
+        }
+        return null;
     }
 
     public List<HeadlineModel> translateHeadlines(List<HeadlineModel> headlineItemList) {

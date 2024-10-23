@@ -3,7 +3,7 @@
 		"apiKey":"xxxx",
 		"secretKey":"xxxx"
 	},
-	"rssUrl":"https://www.people.com.cn/rss/politics.xml",
+	"rssUrl":["https://www.people.com.cn/rss/politics.xml", "https://rsshub.app/infzm/2"],
 	"headlinePath":"src/main/resources/cache/headlines.json",
 	"dalleServerUrl":"http://127.0.0.1:8080",
 	"socketIoServer":{
@@ -15,33 +15,33 @@
 	"oscClient":[
 		{
 			"id":1,
-			"port":5001,
-			"ip":"127.0.0.1"
+			"ip":"127.0.0.1",
+			"port":5001
 		},
 		{
 			"id":2,
-			"port":5001,
-			"ip":"127.0.0.1"
+			"ip":"127.0.0.1",
+			"port":5001
 		},
 		{
 			"id":3,
-			"port":5001,
-			"ip":"127.0.0.1"
+			"ip":"127.0.0.1",
+			"port":5001
 		},
 		{
 			"id":4,
-			"port":5001,
-			"ip":"127.0.0.1"
+			"ip":"127.0.0.1",
+			"port":5001
 		},
 		{
 			"id":5,
-			"port":5001,
-			"ip":"192.168.1.4"
+			"ip":"192.168.1.4",
+			"port":5001
 		},
 		{
 			"id":6,
-			"port":5001,
-			"ip":"127.0.0.1"
+			"ip":"127.0.0.1",
+			"port":5001
 		}
 	]
 }
