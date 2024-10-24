@@ -17,6 +17,7 @@ class ModelsLabImageClient(private val apiKey: String) {
     val COMMUNITY_API_URL = "https://modelslab.com/api/v6/images/text2img"
     val REALTIME_API_URL = "https://modelslab.com/api/v6/realtime/text2img"
 
+    @Serializable
     enum class EnhanceType(val value: String) {
         ENHANCE("enhance"),
         CINEMATIC_DIVA("cinematic-diva"),
@@ -215,6 +216,7 @@ class ModelsLabImageClient(private val apiKey: String) {
         }
     }
 
+    @Serializable
     enum class ModelId(val value: String) {
         FLUX("flux"),
         SDXLCESHI("sdxlceshi"),
@@ -230,6 +232,7 @@ class ModelsLabImageClient(private val apiKey: String) {
         }
     }
 
+    @Serializable
     data class Config (
         val modelType: ModelType,
         val negativePrompt: String? = null,
@@ -239,6 +242,7 @@ class ModelsLabImageClient(private val apiKey: String) {
         val height: Int = 1024
     )
 
+    @Serializable
     enum class ModelType {
         COMMUNITY_API,
         REALTIME_API;
@@ -273,33 +277,36 @@ class ModelsLabImageClient(private val apiKey: String) {
 
     @Serializable
     data class Meta(
-        val base64: String,
-        val enhance_prompt: String,
-        val enhance_style: String?,
-        val file_prefix: String,
-        val guidance_scale: Int,
-        val height: Int,
-        val instant_response: String,
-        val n_samples: Int,
-        val negative_prompt: String,
-        val opacity: Double,
-        val outdir: String,
-        val padding_down: Int,
-        val padding_right: Int,
-        val pag_scale: Double,
-        val prompt: String,
-        val rescale: String,
-        val safety_checker: String,
-        val safety_checker_type: String,
-        val scale_down: Int,
-        val seed: Long,
-        val temp: String,
-        val watermark: String,
-        val width: Int
+        val base64: String? = null,
+        val enhance_prompt: String? = null,
+        val enhance_style: String? = null,
+        val file_prefix: String? = null,
+        val guidance_scale: Double? = null,
+        val height: Int? = null,
+        val instant_response: String? = null,
+        val n_samples: Int? = null,
+        val negative_prompt: String? = null,
+        val opacity: Double? = null,
+        val outdir: String? = null,
+        val padding_down: Int? = null,
+        val padding_right: Int? = null,
+        val pag_scale: Double? = null,
+        val prompt: String? = null,
+        val rescale: String? = null,
+        val safety_checker: String? = null,
+        val safety_checker_type: String? = null,
+        val scale_down: Int? = null,
+        val seed: Long? = null,
+        val temp: String? = null,
+        val watermark: String? = null,
+        val width: Int? = null
     )
 
     private val client = createOkHttpClientWithTimeouts()
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
     private val log = logger()
 
     fun generateImage(prompt: String, config: Config, callback: (String?, Exception?) -> Unit) {

@@ -12,9 +12,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ComboBox(items: List<String>, onSelect: (index: Int) -> Unit) {
+fun ComboBox(items: List<String>, selectId: Int = 0, onSelect: (index: Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedIndex by remember { mutableStateOf(0) }
+    var selectedIndex by remember { mutableStateOf(selectId) }
 
     Column(modifier = Modifier.padding(16.dp)) {
         Spacer(Modifier.height(8.dp))

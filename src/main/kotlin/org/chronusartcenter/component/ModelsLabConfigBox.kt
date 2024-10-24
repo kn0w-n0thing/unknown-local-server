@@ -58,12 +58,12 @@ fun ModelsLabConfigBox(
     onOkClick: (() -> Unit) ? = null,
     modifier: Modifier = Modifier
 ) {
-    var width by remember { mutableStateOf(1024) }
-    var height by remember { mutableStateOf(1024) }
-    var modelType by remember { mutableStateOf(ModelsLabImageClient.ModelType.COMMUNITY_API) }
+    var width by remember { mutableStateOf(config.width) }
+    var height by remember { mutableStateOf(config.height) }
+    var modelType by remember { mutableStateOf(config.modelType) }
     var negativePrompt by remember { mutableStateOf(config.negativePrompt) }
-    var enhanceType by remember { mutableStateOf<ModelsLabImageClient.EnhanceType?>(null) }
-    var modelId by remember { mutableStateOf<ModelsLabImageClient.ModelId?>(ModelsLabImageClient.ModelId.FLUX) }
+    var enhanceType by remember { mutableStateOf(config.enhanceType) }
+    var modelId by remember { mutableStateOf(config.modelId) }
 
     Box(modifier) {
         Column {
@@ -92,11 +92,15 @@ fun ModelsLabConfigBox(
                 Text("Model Type")
 
                 val list = ModelsLabImageClient.ModelType.values().map { it.name }
-                ComboBox(list) {
+                val selectIndex = modelType.ordinal
+                ComboBox(list, selectIndex) {
                     modelType = ModelsLabImageClient.ModelType.fromOrdinal(it) ?: ModelsLabImageClient.ModelType.COMMUNITY_API
                     if (modelType != ModelsLabImageClient.ModelType.COMMUNITY_API) {
                         modelId = null
                         onModelIdChange(null)
+                    } else {
+                        modelId = ModelsLabImageClient.ModelId.FLUX
+                        onModelIdChange(modelId)
                     }
                     onModelTypeChange(modelType)
                 }
@@ -118,7 +122,10 @@ fun ModelsLabConfigBox(
                 Text("Enhance prompt")
 
                 val onOff = listOf("OFF", "ON")
-                ComboBox(onOff) {
+                val selectIndex = if (enhanceType !== null) {
+                    1
+                } else 0
+                ComboBox(onOff, selectIndex) {
                     when (it) {
                         0 -> enhanceType = null
 
@@ -132,7 +139,8 @@ fun ModelsLabConfigBox(
                     Text("Enhance type")
 
                     val list = ModelsLabImageClient.EnhanceType.values().map { it.name }
-                    ComboBox(list) {
+                    val selectIndex = enhanceType?.ordinal ?: 0
+                    ComboBox(list, selectIndex) {
                         enhanceType =
                             ModelsLabImageClient.EnhanceType.fromOrdinal(it) ?: ModelsLabImageClient.EnhanceType.ENHANCE
                         onEnhanceTypeChange(enhanceType)
@@ -145,7 +153,8 @@ fun ModelsLabConfigBox(
                     Text("Model ID")
 
                     val list = ModelsLabImageClient.ModelId.values().map { it.name }
-                    ComboBox(list) {
+                    val selectIndex = modelId?.ordinal ?: 0
+                    ComboBox(list, selectIndex) {
                         modelId =
                             ModelsLabImageClient.ModelId.fromOrdinal(it) ?: ModelsLabImageClient.ModelId.FLUX
                         onModelIdChange(modelId)

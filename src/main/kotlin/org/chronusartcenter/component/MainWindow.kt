@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.kotlin.logger
 import org.chronusartcenter.Context
+import org.chronusartcenter.Context.CONFIG_FILE_PATH
 import org.chronusartcenter.Context.GuiListener
 import org.chronusartcenter.ServiceManager
 import org.chronusartcenter.cache.CacheService
@@ -23,8 +24,10 @@ import org.chronusartcenter.component.ModelsLabConfigBox
 import org.chronusartcenter.component.OscClient
 import org.chronusartcenter.news.NewsService
 import org.chronusartcenter.osc.OscService
+import org.chronusartcenter.service.ConfigService
 import org.chronusartcenter.service.ImageGenerationService
 import org.chronusartcenter.text2image.ModelsLabImageClient
+import java.io.File
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -80,6 +83,7 @@ fun MainWindow(
         val cacheService = remember { CacheService(context) }
 
         var modelsLabConfig by remember { mutableStateOf(ModelsLabImageClient.Config(ModelsLabImageClient.ModelType.COMMUNITY_API)) }
+        val configService = remember { ConfigService() }
         var showConfigDialog by remember { mutableStateOf(false) }
         if (showConfigDialog) {
             Window(
@@ -100,7 +104,10 @@ fun MainWindow(
                         onModelIdChange = { modelsLabConfig = modelsLabConfig.copy(modelId = it) },
                         onWithChange = { modelsLabConfig = modelsLabConfig.copy(width = it) },
                         onHeightChange = { modelsLabConfig = modelsLabConfig.copy(height = it) },
-                        onOkClick = { showConfigDialog = false },
+                        onOkClick = {
+                            configService.writeModelsLabConfig(File(CONFIG_FILE_PATH), modelsLabConfig)
+                            showConfigDialog = false
+                        },
                         modifier = Modifier.padding(16.dp).wrapContentSize()
                     )
                 }
@@ -202,6 +209,12 @@ fun MainWindow(
         var requestTimerOn = remember { false }
         var requestTimer = remember { Timer() }
 
+        LaunchedEffect(Unit) {
+           configService.readModelsLabConfig(File(CONFIG_FILE_PATH))?.let {
+               modelsLabConfig = it
+           }
+        }
+
         LaunchedEffect(requestResult) {
             if (requestTimerOn) {
                 requestTimer.cancel()
@@ -216,16 +229,16 @@ fun MainWindow(
                     requestIntervalOnFailureMinute
                 }
 
-//            requestTimer.schedule(
-//                object : TimerTask() {
-//                    override fun run() {
-//                        requestForNews()
-//                    }
-//                },
-//                0,
-//                TimeUnit.MINUTES.toMillis(requestInterval.toLong())
-//            )
-//            requestTimerOn = true
+            requestTimer.schedule(
+                object : TimerTask() {
+                    override fun run() {
+                        requestForNews()
+                    }
+                },
+                0,
+                TimeUnit.MINUTES.toMillis(requestInterval.toLong())
+            )
+            requestTimerOn = true
         }
 
         MaterialTheme {
