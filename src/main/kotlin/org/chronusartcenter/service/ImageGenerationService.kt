@@ -3,6 +3,7 @@ package org.chronusartcenter.service
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
+import org.apache.logging.log4j.kotlin.logger
 import org.chronusartcenter.dotenv
 import org.chronusartcenter.text2image.ModelsLabImageClient
 import org.chronusartcenter.text2image.OpenAIImageClient
@@ -47,7 +48,8 @@ class ImageGenerationService {
 
             Base64.getEncoder().encodeToString(bytes)
         } catch (e: Exception) {
-            throw Exception("Failed to fetch image from URL: ${e.message}")
+            logger().error("Failed to fetch image from URL: ${e.message}")
+            throw e
         }
     }
 }

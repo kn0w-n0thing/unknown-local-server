@@ -12,6 +12,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.kotlin.logger
 import org.chronusartcenter.Context
@@ -180,15 +181,26 @@ fun MainWindow(
                     return@launch
                 }
 
-                headlines.forEachIndexed generateImages@{ index, headlineModel ->
+                headlines.forEach generateImages@{ headlineModel ->
+                    val insertedIndex = cacheService.saveHeadline(headlineModel)
+                    if (insertedIndex < 0) {
+                        headlineModel?.run {
+                            logger.info("Discard a duplicated headline with title of \"${this.title}\"!")
+                        }.run {
+                            logger.error("HeadlineModel is null!")
+                        }
+
+                        return@generateImages
+                    }
+
                     try {
                         val imageUrl =
-                            imageGenerationService.generateImage(headlineModel.translation, modelsLabConfig)
+                             imageGenerationService.generateImage(headlineModel.translation, modelsLabConfig)
                         val imageBase64 = imageGenerationService.getBase64FromImageUrl(imageUrl)
-                        headlineModel.index = index
-                        cacheService.saveImage("$index.jpeg", imageBase64)
-                        cacheService.saveHeadline(headlineModel)
+                        cacheService.saveImage("$insertedIndex.jpeg", imageBase64)
                     } catch (e: Exception) {
+                        logger.info("Try to delete headline: $headlineModel")
+                        cacheService.removeHeadline(insertedIndex)
                         e.message?.let {
                             consolePrintln(it)
                             logger.error(it)

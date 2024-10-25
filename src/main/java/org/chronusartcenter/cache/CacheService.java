@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import static com.alibaba.fastjson2.JSONWriter.Feature.PrettyFormat;
 
@@ -23,41 +24,91 @@ public class CacheService {
 
     private Logger logger = Logger.getLogger(CacheService.class);
 
+    final private int HEADLINE_CACHE_LIMIT = 50;
+
     public CacheService(Context context) {
         this.context = context;
     }
 
-    public String saveHeadline(HeadlineModel insertHeadline) {
+    // return the index of the headline
+    // -1: error occurs or duplicated headline
+    public int saveHeadline(HeadlineModel insertHeadline) {
         if (insertHeadline == null) {
-            return null;
+            return -1;
         }
 
         var headlineList = loadHeadlines();
         if (headlineList == null) {
+            var index = 0;
+            insertHeadline.setIndex(index);
             var newHeadlineList = new ArrayList<>(List.of(insertHeadline));
             saveHeadlineList(newHeadlineList);
-            return JSON.toJSONString(newHeadlineList, PrettyFormat);
-        } else {
-            var duplicatedIndex = headlineList.stream()
-                    .filter(headlineModel -> headlineModel.getIndex() == insertHeadline.getIndex()).findAny();
-            if (duplicatedIndex.isEmpty()) {
-                headlineList.add(insertHeadline);
-            } else {
-                duplicatedIndex.get().set(insertHeadline);
-            }
+            return index;
         }
-        return saveHeadlineList(headlineList);
+
+        // check if duplicated
+        var duplicatedHeadline = headlineList.stream().filter(headline -> headline.getTitle().equals(insertHeadline.getTitle()));
+        if (duplicatedHeadline.findFirst().isPresent()) {
+            return -1;
+        }
+
+        // check if the cache number exceeds the limitation
+        if (headlineList.size() < HEADLINE_CACHE_LIMIT) {
+            var index = headlineList.size();
+            headlineList.add(insertHeadline);
+            insertHeadline.setIndex(index);
+            saveHeadlineList(headlineList);
+            return index;
+        }
+
+        // pick up a headline randomly
+        // and copy it to HEADLINE_CACHE_LIMIT
+        // then insert the new headline at the picked
+        Random random = new Random(System.currentTimeMillis());
+        var randomIndex = random.nextInt(HEADLINE_CACHE_LIMIT);
+        if (headlineList.size() == HEADLINE_CACHE_LIMIT) {
+            headlineList.add(headlineList.get(randomIndex));
+        } else {
+            headlineList.set(HEADLINE_CACHE_LIMIT, headlineList.get(randomIndex));
+        }
+        insertHeadline.setIndex(randomIndex);
+        headlineList.set(randomIndex, insertHeadline);
+        saveHeadlineList(headlineList);
+
+        return insertHeadline.getIndex();
     }
 
-    private String saveHeadlineList(List<HeadlineModel> headlineModelList) {
-        if (headlineModelList == null || headlineModelList.size() == 0) {
-            return null;
+    public void removeHeadline(int index) {
+        if (index < 0) {
+            return;
+        }
+
+        var headlineList = loadHeadlines();
+        if (index >= headlineList.size()) {
+            return;
+        }
+
+        if (index == headlineList.size() - 1) {
+            headlineList.remove(index);
+            saveHeadlineList(headlineList);
+            return;
+        }
+
+        if (headlineList.size() > HEADLINE_CACHE_LIMIT) {
+            headlineList.set(index, headlineList.get(HEADLINE_CACHE_LIMIT));
+            saveHeadlineList(headlineList);
+        }
+    }
+
+    private void saveHeadlineList(List<HeadlineModel> headlineModelList) {
+        if (headlineModelList == null || headlineModelList.isEmpty()) {
+            return;
         }
 
         String directory = getHeadlineDirectory();
         // The directory doesn't exist but fail to create it!
         if (!createDirectoryIfNecessary(directory)) {
-            return null;
+            return;
         }
 
         // Overwrite old cache file if it exists!
@@ -65,10 +116,8 @@ public class CacheService {
                      new BufferedWriter(new FileWriter(directory + File.separator + getHeadlineFileName()))) {
             String jsonString = JSON.toJSONString(headlineModelList, PrettyFormat);
             writer.write(jsonString);
-            return jsonString;
         } catch (IOException exception) {
             logger.error(exception.toString());
-            return null;
         }
     }
 
