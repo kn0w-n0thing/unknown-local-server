@@ -26,19 +26,18 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.chronusartcenter.component.ComboBox
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.chronusartcenter.component.ModelsLabConfigBox
+import org.chronusartcenter.service.ImageGenerationService.Companion.getBase64FromUrl
 import org.chronusartcenter.text2image.ModelsLabImageClient
 import org.chronusartcenter.text2image.OpenAIImageClient
 import org.jetbrains.skia.Image
+import java.io.IOException
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 val dotenv = dotenv()
-
-enum class ModelType {
-    DALL_E_3,
-    MODELS_LAB,
-}
 
 @Composable
 fun SpinnerAnimation(
@@ -83,7 +82,6 @@ fun loadImageFromBase64(base64String: String): ImageBitmap {
     return Image.makeFromEncoded(imageBytes).toComposeImageBitmap()
 }
 
-
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
@@ -94,21 +92,20 @@ fun main() = application {
         val modelsLabApiKey = dotenv["MODELS_LAB_API_KEY"] ?: ""
 
         var promptText by remember { mutableStateOf("") }
-        var imageUrl by remember { mutableStateOf("https://oaidalleapiprodscus.blob.core.windows.net/private/org-jsVRxHKpVzDRuxdrNICQhXGS/user-6kxuYTQmwOkhch4yitiTpETM/img-NSbMlGz9T0b2P82jMCpQ51aL.png?st=2024-10-12T06%3A56%3A24Z&se=2024-10-12T08%3A56%3A24Z&sp=r&sv=2024-08-04&sr=b&rscd=inline&rsct=image/png&skoid=d505667d-d6c1-4a0a-bac7-5c84a87759f8&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2024-10-11T23%3A20%3A01Z&ske=2024-10-12T23%3A20%3A01Z&sks=b&skv=2024-08-04&sig=nB8UuonhRLpcBW12M4WXdjXydmNhf9ROInaUSdmJhsU%3D") }
+        var imageBase64Url by remember { mutableStateOf("") }
         var isLoading by remember { mutableStateOf(false) }
-        var currentModel by remember { mutableStateOf(ModelType.DALL_E_3) }
 
         var image by remember { mutableStateOf<ImageBitmap?>(null) }
 
-        val openAIImageClient = remember { OpenAIImageClient(openaiApiKey) }
         val modelsLabImageClient = remember { ModelsLabImageClient(modelsLabApiKey) }
         var modelsLabConfig by remember { mutableStateOf(ModelsLabImageClient.Config(modelType = ModelsLabImageClient.ModelType.REALTIME_API)) }
 
-        val apiList = listOf("DallE 3", "Models Lab")
-
-        LaunchedEffect(imageUrl) {
+        LaunchedEffect(imageBase64Url) {
             isLoading = true
-            image = loadImageFromUrl(imageUrl)
+            if (imageBase64Url.isNotBlank()) {
+                val base64String = getBase64FromUrl(imageBase64Url)
+                image = loadImageFromBase64(base64String?:"")
+            }
             isLoading = false
         }
 
@@ -131,39 +128,19 @@ fun main() = application {
                     Button(
                         onClick = {
                             isLoading = true
-                            when (currentModel) {
-                                ModelType.DALL_E_3 -> {
-                                    openAIImageClient.generateImage(promptText) { result, error ->
-                                        isLoading = false
+                            modelsLabImageClient.generateImage(
+                                promptText,
+                                modelsLabConfig
+                            ) { result, error ->
+                                isLoading = false
 
-                                        error?.run {
-                                            println("Error: ${error.message}")
-                                        } ?: let {
-                                            result?.let { value ->
-                                                imageUrl = value
-                                            } ?: run {
-                                                println("No image generated")
-                                            }
-                                        }
-                                    }
-                                }
-
-                                ModelType.MODELS_LAB -> {
-                                    modelsLabImageClient.generateImage(
-                                        promptText,
-                                        modelsLabConfig
-                                    ) { result, error ->
-                                        isLoading = false
-
-                                        error?.run {
-                                            println("Error: ${error.message}")
-                                        } ?: let {
-                                            result?.let { value ->
-                                                imageUrl = value
-                                            } ?: run {
-                                                println("No image generated")
-                                            }
-                                        }
+                                error?.run {
+                                    println("Error: ${error.message}")
+                                } ?: let {
+                                    result?.let { value ->
+                                        imageBase64Url = value
+                                    } ?: run {
+                                        println("No image generated")
                                     }
                                 }
                             }
@@ -175,28 +152,14 @@ fun main() = application {
                     }
                 }
 
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("API type")
-
-                    ComboBox(apiList) { index ->
-                        currentModel = ModelType.values()[index]
-                    }
-                }
-
-                if (currentModel == ModelType.MODELS_LAB) {
-                    ModelsLabConfigBox(modelsLabConfig,
-                        onNegativePromptChange = { modelsLabConfig = modelsLabConfig.copy(negativePrompt = it) },
-                        onModelTypeChange = { modelsLabConfig = modelsLabConfig.copy(modelType = it) },
-                        onEnhanceTypeChange = { modelsLabConfig = modelsLabConfig.copy(enhanceType = it) },
-                        onModelIdChange = { modelsLabConfig = modelsLabConfig.copy(modelId = it)},
-                        onWithChange = { modelsLabConfig = modelsLabConfig.copy(width = it)},
-                        onHeightChange = { modelsLabConfig = modelsLabConfig.copy(height = it)},
-                    )
-                }
+                ModelsLabConfigBox(modelsLabConfig,
+                    onNegativePromptChange = { modelsLabConfig = modelsLabConfig.copy(negativePrompt = it) },
+                    onModelTypeChange = { modelsLabConfig = modelsLabConfig.copy(modelType = it) },
+                    onEnhanceTypeChange = { modelsLabConfig = modelsLabConfig.copy(enhanceType = it) },
+                    onModelIdChange = { modelsLabConfig = modelsLabConfig.copy(modelId = it)},
+                    onWithChange = { modelsLabConfig = modelsLabConfig.copy(width = it)},
+                    onHeightChange = { modelsLabConfig = modelsLabConfig.copy(height = it)},
+                )
             }
 
             Box (

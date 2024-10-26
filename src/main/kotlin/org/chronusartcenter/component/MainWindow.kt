@@ -1,5 +1,6 @@
 package org.chronusartcenter.model
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -194,10 +195,11 @@ fun MainWindow(
                     }
 
                     try {
-                        val imageUrl =
+                        val imageBase64 =
                              imageGenerationService.generateImage(headlineModel.translation, modelsLabConfig)
-                        val imageBase64 = imageGenerationService.getBase64FromImageUrl(imageUrl)
+                        logger.info("imageUrl: $imageBase64")
                         cacheService.saveImage("$insertedIndex.jpeg", imageBase64)
+//                        Thread.sleep(15 * 1000)
                     } catch (e: Exception) {
                         logger.info("Try to delete headline: $headlineModel")
                         cacheService.removeHeadline(insertedIndex)

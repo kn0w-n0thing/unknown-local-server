@@ -3,12 +3,16 @@ package org.chronusartcenter.service
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.apache.logging.log4j.kotlin.logger
 import org.chronusartcenter.dotenv
 import org.chronusartcenter.text2image.ModelsLabImageClient
 import org.chronusartcenter.text2image.OpenAIImageClient
+import java.io.IOException
 import java.net.URL
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class ImageGenerationService {
     private val modelsLabClient: ModelsLabImageClient
@@ -37,19 +41,32 @@ class ImageGenerationService {
         channel.receive().getOrThrow()
     }
 
-    suspend fun getBase64FromImageUrl(url: String): String = withContext(Dispatchers.IO) {
-        try {
-            val connection = URL(url).openConnection()
-            connection.connect()
-            val inputStream = connection.getInputStream()
+    companion object {
+        suspend fun getBase64FromUrl(url: String): String? = withContext(Dispatchers.IO) {
+            val client = OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .build()
 
-            val bytes = inputStream.readBytes()
-            inputStream.close()
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .build()
 
-            Base64.getEncoder().encodeToString(bytes)
-        } catch (e: Exception) {
-            logger().error("Failed to fetch image from URL: ${e.message}")
-            throw e
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        body
+                    } else {
+                        throw Exception("HTTP ${response.code}: ${response.message}")
+                    }
+                }
+            } catch (e: IOException) {
+                throw Exception("Network error: ${e.message}", e)
+            } catch (e: Exception) {
+                throw Exception("Unexpected error: ${e.message}, url: $url", e)
+            }
         }
     }
 }

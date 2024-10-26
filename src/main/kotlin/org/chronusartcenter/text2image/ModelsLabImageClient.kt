@@ -2,7 +2,7 @@ package org.chronusartcenter.text2image
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -261,7 +261,7 @@ class ModelsLabImageClient(private val apiKey: String) {
         val enhance_style: String? = null,
         val model_id: String? = null,
         val width: Int = 1024,
-        val height: Int = 1024
+        val height: Int = 1024,
     )
 
     @Serializable
@@ -272,34 +272,6 @@ class ModelsLabImageClient(private val apiKey: String) {
         val id: Long? = null,
         val output: List<String> = emptyList(),
         val proxy_links: List<String> = emptyList(),
-        val meta: Meta? = null
-    )
-
-    @Serializable
-    data class Meta(
-        val base64: String? = null,
-        val enhance_prompt: String? = null,
-        val enhance_style: String? = null,
-        val file_prefix: String? = null,
-        val guidance_scale: Double? = null,
-        val height: Int? = null,
-        val instant_response: String? = null,
-        val n_samples: Int? = null,
-        val negative_prompt: String? = null,
-        val opacity: Double? = null,
-        val outdir: String? = null,
-        val padding_down: Int? = null,
-        val padding_right: Int? = null,
-        val pag_scale: Double? = null,
-        val prompt: String? = null,
-        val rescale: String? = null,
-        val safety_checker: String? = null,
-        val safety_checker_type: String? = null,
-        val scale_down: Int? = null,
-        val seed: Long? = null,
-        val temp: String? = null,
-        val watermark: String? = null,
-        val width: Int? = null
     )
 
     private val client = createOkHttpClientWithTimeouts()
@@ -322,7 +294,18 @@ class ModelsLabImageClient(private val apiKey: String) {
             height = config.height
         )
 
-        val requestBodyJson = json.encodeToString(requestBody)
+        val requestBodyJson = json.encodeToJsonElement(requestBody)
+
+        val newRequestBodyJson = buildJsonObject {
+            requestBodyJson.jsonObject.forEach { (key, value) ->
+                put(key, value)
+            }
+
+            when (config.modelType) {
+                ModelType.COMMUNITY_API -> put("base64", "yes")
+                ModelType.REALTIME_API -> put("base64", true)
+            }
+        }
 
         val url = when (config.modelType) {
             ModelType.REALTIME_API -> REALTIME_API_URL
@@ -332,7 +315,7 @@ class ModelsLabImageClient(private val apiKey: String) {
         val request = Request.Builder()
             .url(url)
             .addHeader("Content-Type", "application/json")
-            .post(requestBodyJson.toRequestBody("application/json".toMediaType()))
+            .post(newRequestBodyJson.toString().toRequestBody("application/json".toMediaType()))
             .build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -352,6 +335,9 @@ class ModelsLabImageClient(private val apiKey: String) {
                                 callback(null, java.lang.Exception(imageResponse.message))
                             }
                             val imageUrl = imageResponse.output.firstOrNull()
+                            if (imageUrl == null) {
+                                log.warn("Null url with response body: ${response.body?.string()}")
+                            }
                             callback(imageUrl, null)
                         } catch (e: Exception) {
                             callback(null, e)
