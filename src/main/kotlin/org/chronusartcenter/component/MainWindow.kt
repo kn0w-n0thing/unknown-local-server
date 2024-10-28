@@ -198,7 +198,7 @@ fun MainWindow(
                         logger.info("imageUrl: $base64Url")
                         Thread.sleep(5 * 1000)
                         val base64String = ImageGenerationService.getBase64FromUrl(base64Url)
-                        cacheService.saveImage("$insertedIndex.png", base64String)
+                        cacheService.saveImage("$insertedIndex.jpeg", base64String)
                         Thread.sleep(60 * 1000)
                     } catch (e: Exception) {
                         logger.info("Try to delete headline: $headlineModel")
