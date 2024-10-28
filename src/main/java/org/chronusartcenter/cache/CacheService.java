@@ -24,7 +24,7 @@ public class CacheService {
 
     private Logger logger = Logger.getLogger(CacheService.class);
 
-    final private int HEADLINE_CACHE_LIMIT = 50;
+    final private int HEADLINE_CACHE_LIMIT = 30;
 
     public CacheService(Context context) {
         this.context = context;
@@ -80,15 +80,17 @@ public class CacheService {
 
     public void removeHeadline(int index) {
         if (index < 0) {
+            logger.error("removeHeadline, invalid index of " + index);
             return;
         }
 
         var headlineList = loadHeadlines();
         if (index >= headlineList.size()) {
+            logger.error("removeHeadline, invalid index of " + index + ", and the size of list is " + headlineList.size());
             return;
         }
 
-        if (index == headlineList.size() - 1) {
+        if (index <= headlineList.size() - 1) {
             headlineList.remove(index);
             saveHeadlineList(headlineList);
             return;
@@ -96,6 +98,7 @@ public class CacheService {
 
         if (headlineList.size() > HEADLINE_CACHE_LIMIT) {
             headlineList.set(index, headlineList.get(HEADLINE_CACHE_LIMIT));
+            headlineList.remove(HEADLINE_CACHE_LIMIT);
             saveHeadlineList(headlineList);
         }
     }

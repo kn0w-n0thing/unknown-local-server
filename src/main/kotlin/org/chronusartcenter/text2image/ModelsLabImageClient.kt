@@ -1,7 +1,6 @@
 package org.chronusartcenter.text2image
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import okhttp3.Call
 import okhttp3.Callback
@@ -333,10 +332,11 @@ class ModelsLabImageClient(private val apiKey: String) {
                             val imageResponse = json.decodeFromString<ImageGenerationResponse>(responseBody ?: "")
                             if (imageResponse.status == "error") {
                                 callback(null, java.lang.Exception(imageResponse.message))
+                                return
                             }
                             val imageUrl = imageResponse.output.firstOrNull()
                             if (imageUrl == null) {
-                                log.warn("Null url with response body: ${response.body?.string()}")
+                                log.warn("Null url with response body: $imageResponse")
                             }
                             callback(imageUrl, null)
                         } catch (e: Exception) {

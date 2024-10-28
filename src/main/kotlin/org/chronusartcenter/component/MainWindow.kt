@@ -1,6 +1,5 @@
 package org.chronusartcenter.model
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -13,7 +12,6 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.kotlin.logger
 import org.chronusartcenter.Context
@@ -195,11 +193,13 @@ fun MainWindow(
                     }
 
                     try {
-                        val imageBase64 =
+                        val base64Url =
                              imageGenerationService.generateImage(headlineModel.translation, modelsLabConfig)
-                        logger.info("imageUrl: $imageBase64")
-                        cacheService.saveImage("$insertedIndex.jpeg", imageBase64)
-//                        Thread.sleep(15 * 1000)
+                        logger.info("imageUrl: $base64Url")
+                        Thread.sleep(5 * 1000)
+                        val base64String = ImageGenerationService.getBase64FromUrl(base64Url)
+                        cacheService.saveImage("$insertedIndex.png", base64String)
+                        Thread.sleep(60 * 1000)
                     } catch (e: Exception) {
                         logger.info("Try to delete headline: $headlineModel")
                         cacheService.removeHeadline(insertedIndex)

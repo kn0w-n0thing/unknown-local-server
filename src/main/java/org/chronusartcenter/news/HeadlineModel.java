@@ -87,4 +87,15 @@ public class HeadlineModel {
         this.publishDate = headlineModel.publishDate;
     }
 
+    @Override
+    public String toString() {
+        return "HeadlineModel{" +
+                "index=" + index +
+                ", language=" + language +
+                ", title='" + title + '\'' +
+                ", translation='" + translation + '\'' +
+                ", author='" + author + '\'' +
+                ", publishDate='" + publishDate + '\'' +
+                '}';
+    }
 }
